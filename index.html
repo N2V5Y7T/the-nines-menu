@@ -263,6 +263,169 @@
       letter-spacing: 0.1em;
       text-transform: uppercase;
     }
+    /* ── Phase 4 UI: Navigation, Drawers, Buttons ── */
+    #top-nav {
+      position: fixed;
+      top: 0; left: 0; width: 100%;
+      height: 80px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 24px;
+      z-index: 50;
+      /* Subtle dark gradient to ensure text/logo visibility at the very top */
+      background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%);
+      pointer-events: none;
+    }
+    #top-nav > * { pointer-events: auto; }
+
+    #nav-hamburger-btn {
+      background: none; border: none; color: #fff; cursor: pointer; padding: 8px;
+    }
+
+    .logo-container {
+      display: flex; justify-content: center; align-items: center;
+    }
+    #top-logo {
+      height: 28px;
+      border-radius: 2px;
+      /* The logo has a white background. Mix-blend-mode screen + invert makes it transparent with copper turning light blue.
+         Instead, let's keep it as is, or apply a subtle sepia filter to blend it. */
+      mix-blend-mode: screen;
+      filter: invert(1) brightness(1.2) sepia(0.5) hue-rotate(-30deg); /* Approximate copper on transparent */
+    }
+
+    #nav-list-btn {
+      background: none; border: none;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    #list-count.has-items {
+      color: #c17b55;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    /* Add to List Button */
+    .price-action-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .add-btn {
+      background: none;
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #fff;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      display: flex; justify-content: center; align-items: center;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 300;
+      transition: all 0.2s ease;
+    }
+    .add-btn:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: #fff;
+    }
+    .add-btn.added {
+      background: #c17b55;
+      border-color: #c17b55;
+      color: #fff;
+    }
+
+    /* Drawers */
+    #drawer-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      z-index: 60;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    #drawer-overlay.open {
+      opacity: 1; pointer-events: auto;
+    }
+
+    .drawer {
+      position: fixed; top: 0; bottom: 0;
+      width: 85%; max-width: 400px;
+      background: #111;
+      z-index: 70;
+      display: flex; flex-direction: column;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .left-drawer { left: 0; transform: translateX(-100%); }
+    .right-drawer { right: 0; transform: translateX(100%); }
+    .drawer.open { transform: translateX(0); }
+
+    .drawer-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .drawer-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 24px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: #c17b55;
+    }
+    .close-drawer-btn {
+      background: none; border: none; color: #fff; font-size: 20px; cursor: pointer;
+    }
+
+    .drawer-content {
+      flex: 1; overflow-y: auto; padding: 24px;
+    }
+
+    /* Nav Links */
+    .nav-link {
+      display: block; width: 100%; text-align: left;
+      background: none; border: none; color: #fff;
+      padding: 16px 0; cursor: pointer;
+      font-family: 'Inter', sans-serif; font-size: 16px;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .nav-link.group-link {
+      font-family: 'Playfair Display', serif;
+      font-size: 20px; color: #c17b55; margin-top: 16px;
+    }
+
+    /* List Items */
+    .empty-list {
+      color: #888; font-style: italic; text-align: center; margin-top: 40px;
+    }
+    .list-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .list-item-info { display: flex; flex-direction: column; gap: 4px; }
+    .list-item-name { font-size: 15px; font-weight: 400; }
+    .list-item-price { font-size: 14px; color: #c17b55; }
+    .remove-btn {
+      background: none; border: none; color: #888; font-size: 16px; cursor: pointer; padding: 8px;
+    }
+
+    .drawer-footer {
+      padding: 24px; border-top: 1px solid rgba(255,255,255,0.1);
+      background: #0a0a0a;
+    }
+    .total-row {
+      display: flex; justify-content: space-between; align-items: center;
+      font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 500;
+      margin-bottom: 12px; color: #fff;
+    }
+    .footer-note {
+      font-size: 12px; color: #888; text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -278,6 +441,55 @@
   <div id="canvas-viewport">
     <canvas id="main-canvas"></canvas>
   </div>
+
+  <!-- Top Navigation Bar -->
+  <header id="top-nav">
+    <button id="nav-hamburger-btn" aria-label="Menu">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </button>
+    
+    <div class="logo-container">
+      <img src="/assets/logo.jpg" alt="The Nines" id="top-logo" />
+    </div>
+
+    <button id="nav-list-btn" aria-label="My List">
+      My List (<span id="list-count">0</span>)
+    </button>
+  </header>
+
+  <!-- Navigation Drawer (Hamburger) -->
+  <div id="nav-drawer" class="drawer left-drawer">
+    <div class="drawer-header">
+      <h3 class="drawer-title">Menu</h3>
+      <button id="close-nav-btn" class="close-drawer-btn">✕</button>
+    </div>
+    <div id="nav-links" class="drawer-content"></div>
+  </div>
+
+  <!-- My List Drawer -->
+  <div id="list-drawer" class="drawer right-drawer">
+    <div class="drawer-header">
+      <h3 class="drawer-title">My List</h3>
+      <button id="close-list-btn" class="close-drawer-btn">✕</button>
+    </div>
+    <div id="list-items-container" class="drawer-content">
+      <p class="empty-list">Your list is empty.</p>
+    </div>
+    <div class="drawer-footer">
+      <div class="total-row">
+        <span>Estimated Total</span>
+        <span id="list-total-sum">₹0</span>
+      </div>
+      <p class="footer-note">Show this to your server to place an order.</p>
+    </div>
+  </div>
+
+  <!-- Drawer Overlay (shared) -->
+  <div id="drawer-overlay"></div>
 
   <!-- Menu Overlay -->
   <div id="menu-layer"></div>

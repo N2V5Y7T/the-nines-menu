@@ -12,6 +12,8 @@ import { Renderer } from './renderer.js';
 import { DebugHUD } from './debug-hud.js';
 
 import { buildMenuDOM, measureMenuHeights, updateMenuState } from './menu.js';
+import { initListUI } from './list.js';
+import { initNav } from './nav.js';
 
 // ── Global state ────────────────────────────────────────────────
 let layout = [];
@@ -57,6 +59,10 @@ async function init() {
   
   const totalScroll = layout[layout.length - 1].scrollEnd;
   console.log(`[The Nines] Total scroll height: ${Math.round(totalScroll)}px`);
+
+  // Phase 4: Init Nav and List
+  initNav(layout);
+  initListUI();
 
   // Set up scroll container height
   scrollContainer = document.getElementById('scroll-container');

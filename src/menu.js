@@ -5,6 +5,8 @@
  * and syncs CSS transforms/opacities to the current scroll state.
  */
 
+import { registerItem, toggleItem } from './list.js';
+
 function formatPrice(p) {
   if (p === 'seasonal') return 'Seasonal';
   if (p == null) return '—';
@@ -26,7 +28,9 @@ function renderPriceBlock(item) {
 }
 
 function renderItem(item) {
-  // If the owner adds diet: 'veg' or diet: 'nonveg' to the JSON in the future, this will show it.
+  // Register item for the list manager
+  registerItem(item);
+
   const dietDot = item.diet === 'veg' ? '<span class="diet-dot veg"></span>' :
                   item.diet === 'nonveg' ? '<span class="diet-dot nonveg"></span>' : '';
   
@@ -37,7 +41,10 @@ function renderItem(item) {
     <div class="menu-item" id="item-${item.id}">
       <div class="item-header">
         <h4 class="item-name">${dietDot}${item.name}</h4>
-        ${priceHtml}
+        <div class="price-action-wrapper">
+          ${priceHtml}
+          <button class="add-btn" data-id="${item.id}" aria-label="Add to list">＋</button>
+        </div>
       </div>
       ${descHtml}
     </div>
@@ -85,6 +92,15 @@ export function buildMenuDOM(layout) {
     el.style.display = 'none';
     layer.appendChild(el);
     sec.domElement = el;
+  });
+
+  // Global event delegation for menu interactions
+  layer.addEventListener('click', (e) => {
+    // Traverse up to find button if they clicked an inner element
+    const btn = e.target.closest('.add-btn');
+    if (btn) {
+      toggleItem(btn.getAttribute('data-id'), btn);
+    }
   });
 }
 
@@ -169,6 +185,16 @@ export function updateMenuState(state, layout, vh) {
     }
     
     el.style.opacity = opacity;
+    
+    // Manage interaction state (spec: buttons ONLY active during Hold)
+    if (state.buttonsActive && isActive) {
+      el.style.pointerEvents = 'auto';
+      el.removeAttribute('inert');
+    } else {
+      el.style.pointerEvents = 'none';
+      el.setAttribute('inert', '');
+    }
+
     // CRITICAL: Must preserve the -50% horizontal translation from CSS!
     if (sec.type === 'group-intro') {
       el.style.transform = `translate(-50%, calc(-50% + ${y}px))`;
