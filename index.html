@@ -29,44 +29,184 @@
       /* Allow native scroll — no hijacking */
     }
 
-    /* ── Sticky canvas viewport ── */
+    /* ── Fixed canvas viewport ── */
     #canvas-viewport {
-      position: sticky;
+      position: fixed;
       top: 0;
+      left: 0;
       width: 100%;
+      height: 100vh; /* fallback */
       height: 100dvh;
       z-index: 0;
       overflow: hidden;
-      /* Centered for desktop — max 9:16 ratio */
     }
 
     #main-canvas {
       display: block;
       width: 100%;
       height: 100%;
-      /* On desktop, center the 9:16 frame */
     }
 
     /* ── Scroll container (drives all animations) ── */
     #scroll-container {
       position: relative;
       z-index: 1;
-      /* Height set by JS based on total scroll layout */
-      /* This element is invisible — it just makes the page scrollable */
       pointer-events: none;
-      margin-top: -100dvh; /* Overlap with sticky canvas */
+      /* Height set by JS. Canvas is fixed, so no margin overlap needed. */
     }
 
     /* ── Desktop: centered vertical frame with dark side bars ── */
     @media (min-aspect-ratio: 9/16) {
       #canvas-viewport {
-        max-width: calc(100dvh * 9 / 16);
-        margin: 0 auto;
-      }
-      body {
-        background: #0a0a0a;
+        left: 50%;
+        transform: translateX(-50%);
+        width: calc(100vh * 9 / 16);
+        width: calc(100dvh * 9 / 16);
       }
     }
+
+    /* ── Menu Overlay ── */
+    #menu-layer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+      z-index: 10;
+      pointer-events: none;
+    }
+    
+    .menu-section {
+      position: absolute;
+      top: 15vh; /* Menu starts scrolling from here */
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 414px; /* Mobile safe width */
+      padding: 0 24px 10vh;
+      pointer-events: auto; /* Let clicks pass to items if needed */
+      text-shadow: 0 2px 16px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.8);
+      will-change: transform, opacity;
+    }
+
+    .menu-section.group-intro {
+      top: 50%;
+      padding: 0 24px;
+      /* center group intros precisely, they don't scroll */
+      transform: translate(-50%, calc(-50% + var(--intro-y, 0px)));
+    }
+
+    /* Emergence animation logic */
+    .group-title, .sec-header {
+      opacity: var(--cat-prog, 1);
+      transform: translateY(calc((1 - var(--cat-prog, 1)) * 30px));
+    }
+    .menu-content {
+      opacity: var(--menu-prog, 1);
+      transform: translateY(calc((1 - var(--menu-prog, 1)) * 40px));
+    }
+
+    /* Typography */
+    .group-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 44px;
+      font-weight: 600;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 32px;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .section-note {
+      font-size: 13px;
+      font-weight: 400;
+      color: #ddd;
+      margin-bottom: 24px;
+      font-style: italic;
+    }
+
+    .subgroup {
+      margin-top: 32px;
+    }
+    .subgroup-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px;
+      font-weight: 600;
+      color: #c17b55;
+      margin-bottom: 4px;
+    }
+    .subgroup-note {
+      font-size: 13px;
+      color: #aaa;
+      margin-bottom: 16px;
+    }
+
+    .items-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .menu-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    .item-name {
+      flex: 1;
+      font-size: 16px;
+      font-weight: 500;
+      line-height: 1.3;
+    }
+
+    .item-price {
+      font-size: 15px;
+      font-weight: 600;
+      color: #c17b55;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .item-desc {
+      font-size: 13px;
+      font-weight: 400;
+      color: #ccc;
+      line-height: 1.4;
+    }
+
+    .opt-label {
+      font-size: 12px;
+      font-weight: 400;
+      color: #aaa;
+      margin-right: 4px;
+    }
+
+    .diet-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 8px;
+      transform: translateY(-1px);
+    }
+    .diet-dot.veg { background: #4caf50; box-shadow: 0 0 0 1px #fff, 0 0 4px #000; }
+    .diet-dot.nonveg { background: #f44336; box-shadow: 0 0 0 1px #fff, 0 0 4px #000; }
 
     /* ── Loading screen ── */
     #loader {
@@ -126,6 +266,9 @@
   <div id="canvas-viewport">
     <canvas id="main-canvas"></canvas>
   </div>
+
+  <!-- Menu Overlay -->
+  <div id="menu-layer"></div>
 
   <!-- Scroll container (makes the page tall enough for all sections) -->
   <div id="scroll-container"></div>

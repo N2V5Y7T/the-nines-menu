@@ -11,6 +11,8 @@ import { FrameCache } from './frame-cache.js';
 import { Renderer } from './renderer.js';
 import { DebugHUD } from './debug-hud.js';
 
+import { buildMenuDOM, measureMenuHeights, updateMenuState } from './menu.js';
+
 // ── Global state ────────────────────────────────────────────────
 let layout = [];
 let frameCache;
@@ -20,6 +22,7 @@ let scrollContainer;
 let canvas;
 let rafId = null;
 let lastScrollY = -1;
+let viewportHeight = window.innerHeight;
 
 // Sections currently loading / loaded
 const loadedSections = new Set();
@@ -28,32 +31,37 @@ const loadedSections = new Set();
 async function init() {
   console.log('[The Nines] Initializing…');
 
-  // Build section config from manifest + menu.json
   const sections = await buildSectionConfig();
   console.log(`[The Nines] ${sections.length} sections configured`);
 
-  // Compute scroll layout
-  const vh = window.innerHeight;
-  layout = computeScrollLayout(sections, vh);
-  const totalScroll = layout[layout.length - 1].scrollEnd;
-  console.log(`[The Nines] Total scroll height: ${Math.round(totalScroll)}px (${Math.round(totalScroll / vh)}vh)`);
+  viewportHeight = window.innerHeight;
+  layout = computeScrollLayout(sections, viewportHeight);
 
-  // Set up scroll container height
-  scrollContainer = document.getElementById('scroll-container');
-  scrollContainer.style.height = `${totalScroll + vh}px`;  // +vh so last section is fully scrollable
-
-  // Set up canvas
+  // Set up canvas & core systems
   canvas = document.getElementById('main-canvas');
-  
-  // Initialize systems
   frameCache = new FrameCache();
   renderer = new Renderer(canvas, frameCache);
   debugHUD = new DebugHUD();
 
-  // Load first section immediately and show progress
+  // Load first section immediately
   loadSectionFrames(0, 'high');
 
-  // Poll for loading progress and dismiss loader when first section is usable
+  // Phase 3: Build DOM menu and measure real heights
+  buildMenuDOM(layout);
+  measureMenuHeights(layout, viewportHeight);
+  
+  // Recompute layout using the real measured heights!
+  layout = computeScrollLayout(sections, viewportHeight);
+  
+  const totalScroll = layout[layout.length - 1].scrollEnd;
+  console.log(`[The Nines] Total scroll height: ${Math.round(totalScroll)}px`);
+
+  // Set up scroll container height
+  scrollContainer = document.getElementById('scroll-container');
+  // Add vh so the maximum scrollY (which is height - vh) equals totalScroll
+  scrollContainer.style.height = `${totalScroll + viewportHeight}px`;
+
+  // Poll for loading progress and dismiss loader
   const loaderBar = document.getElementById('loader-bar');
   const loaderText = document.getElementById('loader-text');
   const loaderEl = document.getElementById('loader');
@@ -108,6 +116,9 @@ function tick() {
 
   // Render the frame
   renderer.render(state);
+
+  // Sync the DOM menu overlay
+  updateMenuState(state, layout, viewportHeight);
 
   // Manage section loading
   manageSectionLoading(state);
@@ -179,3 +190,5 @@ function onResize() {
 init().catch(err => {
   console.error('[The Nines] Init failed:', err);
 });
+
+setTimeout(() => { const testImg = new Image(); testImg.src = '/frames/food/frame0001.webp'; testImg.style.position = 'fixed'; testImg.style.top = '50px'; testImg.style.left = '50px'; testImg.style.width = '100px'; testImg.style.zIndex = '10000'; document.body.appendChild(testImg); console.log('Appended test img'); }, 2000);

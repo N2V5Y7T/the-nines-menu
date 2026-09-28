@@ -128,7 +128,9 @@ export function computeScrollLayout(sections, vh) {
 
     // Segment H: video frozen, menu scrolls
     // For group intros (no menu), use a short hold (just the title moment)
-    const H_length = sec.hasMenu ? sec.estimatedMenuHeightPx : (60 * vh / 100);
+    const H_length = sec.hasMenu 
+      ? (sec.measuredHeightPx !== undefined ? sec.measuredHeightPx : sec.estimatedMenuHeightPx) 
+      : (60 * vh / 100);
 
     // Segment X: exit (exitLengthVh)
     const X_length = exitPx;
