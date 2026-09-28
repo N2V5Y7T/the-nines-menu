@@ -13,7 +13,7 @@
 
 ---
 
-## Current Status: PHASE 3 COMPLETE — Menu UI is synced and styled
+## Current Status: PHASE 4 COMPLETE — Navigation, My List, and Cart logic are live
 
 ---
 
@@ -22,7 +22,7 @@
 | Decision | Value |
 |---|---|
 | FFmpeg | ✅ `C:\Users\evele\AppData\Local\Microsoft\WinGet\Links\ffmpeg.exe` (v9.0.2) |
-| Font combination | **Candidate A** — Playfair Display (display) + Inter (body) |
+| Font combination | **Candidate A** — Playfair Display (400) + Inter (body) |
 | Hosting | **Cloudflare Pages** |
 | Estimated total | Show sum only — **no tax/GST mention** |
 | Dietary tags | **YES** — veg/nonveg dot indicators implemented (`.diet-dot`) |
@@ -34,13 +34,10 @@
 
 ### Phase 0 — Setup, Inventory & Approvals ✅ COMPLETE (committed: eb74e24)
 - All 19 videos mapped; `menu.json` validated (315 items).
-- Logo identified; colors/fonts proposed and locked.
 
 ### Phase 1 — Asset Pipeline ✅ COMPLETE (committed: f6f09ce)
 - **12fps, 720px width, WebP quality=82** selected based on user approval.
 - All 19 videos extracted (1,824 frames total, ~75.8 MB total).
-- `public/frames/manifest.json` built with frame counts, calculated hold frames, and tiny 20px blur placeholders.
-- Watermark check on all key sections: **Clean (no watermarks)**.
 
 ### Phase 2 — Core Engine ✅ COMPLETE (committed: 3c3c557)
 - `config.js`: Computes scroll boundaries for A/H/X/C/J segments.
@@ -48,12 +45,17 @@
 - `frame-cache.js`: Memory-safe frame sliding window (±10 frames).
 - `renderer.js`: DPR-capped canvas rendering with J-segment cross-dissolve.
 
-### Phase 3 — DOM Menu & Styling ✅ COMPLETE (committed: 51e1563)
-- `menu.js`: Generates `#menu-layer` DOM from `menu.json`. Handles flat prices, options, spirits (`pour30ml`/`bottle`), and wine.
-- **Dynamic Measurement**: Measures true DOM height of every section and overrides `sec.estimatedMenuHeightPx`, automatically recalculating the perfect total scroll length for the page.
-- **Staggered Animation**: CSS variables (`--cat-prog`, `--menu-prog`) translate `entranceProgress` into a cinematic sequence where the category emerges from the center, then rises while the menu fades in from below.
-- **Group Intros**: Correctly centered and locked in place (no scroll drift).
-- Pure white text styling with drop-shadows for video contrast; typography maps Playfair Display & Inter.
+### Phase 3 — DOM Menu & Styling ✅ COMPLETE (committed: 51e1563, fbf98b8)
+- `menu.js`: Generates `#menu-layer` DOM from `menu.json`.
+- **Dynamic Measurement**: Measures true DOM height to compute total scroll length.
+- **Cinematic Choreography**: Text emerges gracefully from the center and floats up.
+- **Premium Typography**: Playfair Display (headings) + Inter (body).
+
+### Phase 4 — Navigation & My List ✅ COMPLETE (committed: 72203ec)
+- **Top Bar**: Fixed header with Hamburger icon, transparent logo overlay, and My List counter.
+- **Menu Drawer**: Dynamically generated side-panel links that scroll to sections.
+- **Cart Logic (`list.js`)**: Real-time sum tracking, add/remove functions, popup drawer.
+- **Interaction Guard**: Added rigorous check so "+" buttons are **inert** when scrolling/scrubbing, and only active when the video is frozen on a hold frame.
 
 ---
 
