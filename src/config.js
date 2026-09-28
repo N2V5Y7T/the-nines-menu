@@ -7,10 +7,13 @@
 
 // Default choreography values (from the-nines-animation-choreography.md)
 export const CHOREOGRAPHY = {
-  categoryStart:      0.40,   // video progress when category begins emerging
-  categoryRiseEnd:    0.47,   // video progress when category rise completes
-  menuStart:          0.47,   // video progress when menu begins emerging
-  holdAt:             0.50,   // video progress at which video freezes
+  // Entrance (spread out for much smoother emergence)
+  categoryStart:      0.05,   // Start emerging almost immediately
+  categoryRiseEnd:    0.35,   // Glide up slowly over a long scroll
+  menuStart:          0.25,   // Menu begins fading in beneath
+  holdAt:             0.50,   // Finish entrance when video hits holdFrame
+  
+  // Exit
   exitVideoResumeAt:  0.40,   // fraction of exit segment where video resumes
   exitLengthVh:       70,     // exit segment scroll length in vh
   handoffLengthVh:    35,     // cross-dissolve length in vh
@@ -128,8 +131,9 @@ export function computeScrollLayout(sections, vh) {
 
     // Segment H: video frozen, menu scrolls
     // For group intros (no menu), use a short hold (just the title moment)
+    // For menus, enforce a minimum hold of 60vh so they don't pop instantly even if short.
     const H_length = sec.hasMenu 
-      ? (sec.measuredHeightPx !== undefined ? sec.measuredHeightPx : sec.estimatedMenuHeightPx) 
+      ? (sec.measuredHeightPx !== undefined ? Math.max(sec.measuredHeightPx, 60 * vh / 100) : sec.estimatedMenuHeightPx) 
       : (60 * vh / 100);
 
     // Segment X: exit (exitLengthVh)
