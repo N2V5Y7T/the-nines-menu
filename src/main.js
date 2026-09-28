@@ -51,7 +51,9 @@ async function init() {
   measureMenuHeights(layout, viewportHeight);
   
   // Recompute layout using the real measured heights!
-  layout = computeScrollLayout(sections, viewportHeight);
+  // CRITICAL FIX: we must pass `layout` (which now has measuredHeightPx and domElement)
+  // instead of `sections` so we don't lose the DOM references!
+  layout = computeScrollLayout(layout, viewportHeight);
   
   const totalScroll = layout[layout.length - 1].scrollEnd;
   console.log(`[The Nines] Total scroll height: ${Math.round(totalScroll)}px`);
@@ -190,5 +192,3 @@ function onResize() {
 init().catch(err => {
   console.error('[The Nines] Init failed:', err);
 });
-
-setTimeout(() => { const testImg = new Image(); testImg.src = '/frames/food/frame0001.webp'; testImg.style.position = 'fixed'; testImg.style.top = '50px'; testImg.style.left = '50px'; testImg.style.width = '100px'; testImg.style.zIndex = '10000'; document.body.appendChild(testImg); console.log('Appended test img'); }, 2000);

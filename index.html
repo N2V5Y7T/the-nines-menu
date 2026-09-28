@@ -13,20 +13,16 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     html {
-      /* Use dvh so iOS/Android address bar changes don't cause layout shift */
-      height: 100%;
-      overflow-x: hidden;
-      -webkit-text-size-adjust: 100%;
       background: #0a0a0a;
+      -webkit-text-size-adjust: 100%;
     }
 
     body {
       background: #0a0a0a;
       color: #fff;
       font-family: 'Inter', system-ui, sans-serif;
-      min-height: 100dvh;
-      overflow-x: hidden;
-      /* Allow native scroll — no hijacking */
+      margin: 0;
+      /* Remove overflow-x: hidden and min-height constraints to ensure vertical scroll works */
     }
 
     /* ── Fixed canvas viewport ── */
