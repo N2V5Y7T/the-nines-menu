@@ -13,7 +13,7 @@
 
 ---
 
-## Current Status: PHASE 2 COMPLETE — Core scroll engine is running
+## Current Status: PHASE 3 COMPLETE — Menu UI is synced and styled
 
 ---
 
@@ -25,7 +25,7 @@
 | Font combination | **Candidate A** — Playfair Display (display) + Inter (body) |
 | Hosting | **Cloudflare Pages** |
 | Estimated total | Show sum only — **no tax/GST mention** |
-| Dietary tags | **YES** — veg/nonveg dot indicators required (menu.json has no veg flags yet) |
+| Dietary tags | **YES** — veg/nonveg dot indicators implemented (`.diet-dot`) |
 | Analytics | Privacy-friendly basic (Plausible.io) |
 
 ---
@@ -43,12 +43,17 @@
 - Watermark check on all key sections: **Clean (no watermarks)**.
 
 ### Phase 2 — Core Engine ✅ COMPLETE (committed: 3c3c557)
-- `config.js`: Loads manifest/menu, computes `scrollStart`/`scrollEnd` and A/H/X/C/J segment boundaries for all sections based on menu height estimates.
-- `scroll-map.js`: Pure function mapping raw scroll pixel position to a state object (video progress `p`, entrance progress, button active state).
-- `frame-cache.js`: Handles coarse-to-fine loading, AbortController preemption, and a decoded sliding window (±10 frames) to keep memory usage safe (~70MB peak).
-- `renderer.js`: Draws `object-fit: cover` to canvas, caps device pixel ratio at 2, handles J-segment cross-dissolves.
-- `main.js`: Main orchestrator, rAF-coalesced scroll listener, implements look-ahead section preloading (fetches next section when current is >70% scrolled).
-- `debug-hud.js`: Accessible via `?debug=1` in URL to monitor state, memory, and FPS.
+- `config.js`: Computes scroll boundaries for A/H/X/C/J segments.
+- `scroll-map.js`: Pure function mapping raw scroll pixel position to a state object.
+- `frame-cache.js`: Memory-safe frame sliding window (±10 frames).
+- `renderer.js`: DPR-capped canvas rendering with J-segment cross-dissolve.
+
+### Phase 3 — DOM Menu & Styling ✅ COMPLETE (committed: 51e1563)
+- `menu.js`: Generates `#menu-layer` DOM from `menu.json`. Handles flat prices, options, spirits (`pour30ml`/`bottle`), and wine.
+- **Dynamic Measurement**: Measures true DOM height of every section and overrides `sec.estimatedMenuHeightPx`, automatically recalculating the perfect total scroll length for the page.
+- **Staggered Animation**: CSS variables (`--cat-prog`, `--menu-prog`) translate `entranceProgress` into a cinematic sequence where the category emerges from the center, then rises while the menu fades in from below.
+- **Group Intros**: Correctly centered and locked in place (no scroll drift).
+- Pure white text styling with drop-shadows for video contrast; typography maps Playfair Display & Inter.
 
 ---
 
