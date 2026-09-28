@@ -178,8 +178,8 @@ export function getScrollState(scrollY, layout) {
       frameIndex: Math.round(p * (frameCount - 1)),
       segmentProgress: t,
       entranceProgress: 1,
-      categoryProgress: Math.max(0, 1 - t * 1.5), // category exits faster
-      menuProgress: Math.max(0, 1 - t * 1.2),      // menu fades
+      categoryProgress: 1, // Stay at 1 so CSS transform doesn't push it down
+      menuProgress: 1,     // Stay at 1
       exitProgress,
       holdMenuScroll: sec.H_length,
       buttonsActive: false,  // INACTIVE during exit

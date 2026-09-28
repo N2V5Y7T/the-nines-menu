@@ -8,9 +8,9 @@
 // Default choreography values (from the-nines-animation-choreography.md)
 export const CHOREOGRAPHY = {
   // Entrance (spread out for much smoother emergence)
-  categoryStart:      0.05,   // Start emerging almost immediately
-  categoryRiseEnd:    0.35,   // Glide up slowly over a long scroll
-  menuStart:          0.25,   // Menu begins fading in beneath
+  categoryStart:      0.0,    // Start immediately
+  categoryRiseEnd:    0.50,   // Glide smoothly over the entire entrance scroll
+  menuStart:          0.10,   // Menu starts fading in right after category
   holdAt:             0.50,   // Finish entrance when video hits holdFrame
   
   // Exit

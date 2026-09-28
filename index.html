@@ -94,38 +94,38 @@
     }
 
     /* Emergence animation logic */
-    /* Starting down at 35vh places the title squarely in the center of the viewport when hidden */
+    /* Starting down at 15vh (gentle rise) instead of 35vh prevents it from moving too fast */
     .group-title, .sec-header {
       opacity: var(--cat-prog, 1);
-      transform: translateY(calc((1 - var(--cat-prog, 1)) * 35vh));
+      transform: translateY(calc((1 - var(--cat-prog, 1)) * 12vh));
       text-align: center;
-      margin-bottom: 30px;
+      margin-bottom: 24px;
     }
     .menu-content {
       opacity: var(--menu-prog, 1);
       /* Menu rises smoothly from just below */
-      transform: translateY(calc((1 - var(--menu-prog, 1)) * 15vh));
+      transform: translateY(calc((1 - var(--menu-prog, 1)) * 8vh));
     }
 
     /* Typography */
     .group-title {
       font-family: 'Playfair Display', serif;
-      font-size: 52px;
-      font-weight: 500;
+      font-size: 48px;
+      font-weight: 400; /* Lighter is more premium */
       text-align: center;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.15em;
       color: #fff;
     }
 
     .section-title {
       font-family: 'Playfair Display', serif;
-      font-size: 34px;
-      font-weight: 500;
+      font-size: 32px;
+      font-weight: 400;
       text-transform: uppercase;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.15em;
       color: #f8f8f8;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
 
     .section-note {
@@ -143,17 +143,18 @@
     }
     .subgroup-title {
       font-family: 'Playfair Display', serif;
-      font-size: 24px;
-      font-weight: 500;
+      font-size: 22px;
+      font-weight: 400;
       color: #c17b55;
       margin-bottom: 8px;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
     .subgroup-note {
       font-family: 'Inter', sans-serif;
       font-size: 13px;
       font-weight: 300;
-      color: #ccc;
+      color: #bbb;
       margin-bottom: 18px;
     }
 
@@ -178,7 +179,8 @@
 
     .item-name {
       flex: 1;
-      font-size: 17px;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
       font-weight: 400;
       line-height: 1.4;
       letter-spacing: 0.02em;
