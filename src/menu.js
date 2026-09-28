@@ -125,11 +125,11 @@ export function updateMenuState(state, layout, vh) {
     const el = sec.domElement;
     if (!el) return;
     
-    // Only render active section (or next section if cross-dissolving)
     const isActive = sec.key === activeSec.key;
-    const isNext = state.crossDissolve && sec.key === state.crossDissolve.nextSection.key;
     
-    if (!isActive && !isNext) {
+    // We do NOT want to show the next section's menu during the cross-dissolve (J segment).
+    // The spec explicitly says: "no menu visible during the crossfade."
+    if (!isActive) {
       el.style.display = 'none';
       return;
     }
@@ -139,45 +139,41 @@ export function updateMenuState(state, layout, vh) {
     let opacity = 0;
     let y = 0;
     
-    if (isActive) {
-      if (state.segment === 'A') {
-        el.style.setProperty('--cat-prog', state.categoryProgress);
-        el.style.setProperty('--menu-prog', state.menuProgress);
-        opacity = state.entranceProgress;
-        y = 0; 
-      } 
-      else if (state.segment === 'H') {
-        el.style.setProperty('--cat-prog', 1);
-        el.style.setProperty('--menu-prog', 1);
-        opacity = 1;
-        // Group intros don't scroll during hold, they just freeze
-        y = sec.type === 'group-intro' ? 0 : -state.holdMenuScroll;
-      }
-      else if (state.segment === 'X') {
-        el.style.setProperty('--cat-prog', state.categoryProgress); 
-        el.style.setProperty('--menu-prog', state.menuProgress);
-        opacity = 1 - state.exitProgress;
-        
-        const baseScroll = sec.type === 'group-intro' ? 0 : -sec.H_length;
-        // Lift up during exit
-        y = baseScroll - (state.exitProgress * vh * 0.2); 
-      }
-      else if (state.segment === 'C') {
-        opacity = 0;
-      }
-      else if (state.segment === 'J') {
-        opacity = 0;
-      }
-    }
-    else if (isNext) {
-      // Incoming section during J segment
+    if (state.segment === 'A') {
+      el.style.setProperty('--cat-prog', state.categoryProgress);
+      el.style.setProperty('--menu-prog', state.menuProgress);
+      opacity = state.entranceProgress;
+      y = 0; 
+    } 
+    else if (state.segment === 'H') {
       el.style.setProperty('--cat-prog', 1);
       el.style.setProperty('--menu-prog', 1);
-      opacity = state.crossDissolve.progress;
-      y = 0;
+      opacity = 1;
+      // Group intros don't scroll during hold, they just freeze
+      y = sec.type === 'group-intro' ? 0 : -state.holdMenuScroll;
+    }
+    else if (state.segment === 'X') {
+      el.style.setProperty('--cat-prog', state.categoryProgress); 
+      el.style.setProperty('--menu-prog', state.menuProgress);
+      opacity = 1 - state.exitProgress;
+      
+      const baseScroll = sec.type === 'group-intro' ? 0 : -sec.H_length;
+      // Lift up during exit
+      y = baseScroll - (state.exitProgress * vh * 0.2); 
+    }
+    else if (state.segment === 'C') {
+      opacity = 0;
+    }
+    else if (state.segment === 'J') {
+      opacity = 0;
     }
     
     el.style.opacity = opacity;
-    el.style.transform = `translateY(${y}px)`;
+    // CRITICAL: Must preserve the -50% horizontal translation from CSS!
+    if (sec.type === 'group-intro') {
+      el.style.transform = `translate(-50%, calc(-50% + ${y}px))`;
+    } else {
+      el.style.transform = `translateX(-50%) translateY(${y}px)`;
+    }
   });
 }
