@@ -11,12 +11,21 @@ export function initNav(layout) {
 
   // Build links from layout
   let html = '';
+  let currentGroup = null;
+
   layout.forEach(sec => {
-    // We can list all sections, or just group intros. 
-    // The spec implies we should link to sections. We will indent non-group sections.
+    // If we enter a new group, output a group header if this section isn't a group-intro
+    if (sec.groupKey && sec.groupKey !== currentGroup) {
+      currentGroup = sec.groupKey;
+      // If the first section of this group is NOT a group-intro, output a static header
+      if (sec.type !== 'group-intro' && sec.groupLabel) {
+        html += `<div class="nav-group-header">${sec.groupLabel}</div>`;
+      }
+    }
+
     const isGroup = sec.type === 'group-intro';
     const className = isGroup ? 'nav-link group-link' : 'nav-link section-link';
-    // Skip if it doesn't have a label
+    
     if (sec.label) {
       html += `<button class="${className}" data-scroll="${sec.H_start}">${sec.label}</button>`;
     }

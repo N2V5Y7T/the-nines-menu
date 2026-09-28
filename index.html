@@ -51,16 +51,6 @@
       /* Height set by JS. Canvas is fixed, so no margin overlap needed. */
     }
 
-    /* ── Desktop: centered vertical frame with dark side bars ── */
-    @media (min-aspect-ratio: 9/16) {
-      #canvas-viewport {
-        left: 50%;
-        transform: translateX(-50%);
-        width: calc(100vh * 9 / 16);
-        width: calc(100dvh * 9 / 16);
-      }
-    }
-
     /* ── Menu Overlay ── */
     #menu-layer {
       position: fixed;
@@ -386,17 +376,33 @@
     }
 
     /* Nav Links */
+    .nav-group-header {
+      font-family: 'Playfair Display', serif;
+      font-size: 24px; color: #c17b55; margin-top: 24px; padding-bottom: 8px;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
     .nav-link {
       display: block; width: 100%; text-align: left;
       background: none; border: none; color: #fff;
       padding: 16px 0; cursor: pointer;
-      font-family: 'Inter', sans-serif; font-size: 16px;
+      font-family: 'Inter', sans-serif; font-size: 15px;
       text-transform: uppercase; letter-spacing: 0.05em;
       border-bottom: 1px solid rgba(255,255,255,0.05);
+      transition: color 0.2s ease;
+    }
+    .nav-link:hover {
+      color: #c17b55;
     }
     .nav-link.group-link {
       font-family: 'Playfair Display', serif;
-      font-size: 20px; color: #c17b55; margin-top: 16px;
+      font-size: 24px; color: #c17b55; margin-top: 16px;
+      letter-spacing: 0.1em;
+    }
+    .nav-link.section-link {
+      padding-left: 16px;
+      font-size: 14px;
+      color: #bbb;
     }
 
     /* List Items */
@@ -425,6 +431,16 @@
     }
     .footer-note {
       font-size: 12px; color: #888; text-align: center;
+    }
+
+    /* ── Desktop Constraints (must be at the end to override base styles) ── */
+    @media (min-aspect-ratio: 9/16) {
+      #canvas-viewport, #top-nav {
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: calc(100vh * 9 / 16) !important;
+        width: calc(100dvh * 9 / 16) !important;
+      }
     }
   </style>
 </head>
