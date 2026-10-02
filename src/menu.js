@@ -332,4 +332,15 @@ export function updateMenuState(state, layout, vh) {
       el.style.transform = `translateX(-50%) translateY(${y}px)`;
     }
   });
+
+  // Cinematic Scrim (Phase 7 Fix): 
+  // Darken the video seamlessly in sync with menu entrance/exit so text is perfectly legible
+  const scrim = document.getElementById('video-scrim');
+  if (scrim) {
+    let scrimOpacity = 0;
+    if (state.segment === 'A') scrimOpacity = state.entranceProgress;
+    else if (state.segment === 'H') scrimOpacity = 1;
+    else if (state.segment === 'X') scrimOpacity = 1 - state.exitProgress;
+    scrim.style.opacity = scrimOpacity;
+  }
 }

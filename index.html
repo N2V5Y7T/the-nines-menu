@@ -26,16 +26,6 @@
       font-family: 'Inter', system-ui, sans-serif;
       margin: 0;
       /* Remove overflow-x: hidden and min-height constraints to ensure vertical scroll works */
-
-      /* Dynamic Theme Variables (Updated via JS based on video background luminance) */
-      --text-main: #fff;
-      --text-muted: #999;
-      --text-desc: #bbb;
-      --text-shadow: 0 2px 16px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.8);
-      --chip-bg: rgba(255,255,255,0.07);
-      --chip-border: rgba(255,255,255,0.1);
-      --chip-label: #aaa;
-      --btn-border: rgba(255,255,255,0.3);
     }
 
     /* ── Fixed canvas viewport ── */
@@ -56,6 +46,17 @@
       transition: opacity 1.5s cubic-bezier(0.16, 1, 0.3, 1), 
                   filter 1.5s cubic-bezier(0.16, 1, 0.3, 1), 
                   transform 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Cinematic dynamic darkening behind menu text */
+    #video-scrim {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0, 0.5); /* 50% max darkness to make white text pop safely */
+      opacity: 0; /* Opacity driven strictly by JS menuProgress */
+      pointer-events: none;
+      z-index: 5; /* Above canvas, below menu layer */
+      will-change: opacity;
     }
 
     body.ready #canvas-viewport {
@@ -88,7 +89,7 @@
       height: 100dvh;
       z-index: 10;
       pointer-events: none;
-      color: var(--text-main);
+      color: #fff;
       opacity: 0;
       transition: opacity 1.5s cubic-bezier(0.16, 1, 0.3, 1);
     }
@@ -105,7 +106,7 @@
       max-width: 414px; /* Mobile safe width */
       padding: 0 24px 10vh;
       pointer-events: auto; /* Let clicks pass to items if needed */
-      text-shadow: var(--text-shadow);
+      text-shadow: 0 1px 4px rgba(0,0,0,0.9), 0 3px 20px rgba(0,0,0,0.5);
       will-change: transform, opacity;
       transition: text-shadow 0.4s ease, color 0.4s ease;
     }
@@ -141,7 +142,7 @@
       text-align: center;
       text-transform: uppercase;
       letter-spacing: 0.15em;
-      color: var(--text-main);
+      color: #fff;
     }
 
     .section-title {
@@ -150,7 +151,7 @@
       font-weight: 400;
       text-transform: uppercase;
       letter-spacing: 0.15em;
-      color: var(--text-main);
+      color: #fff;
       margin-bottom: 4px;
     }
 
@@ -158,7 +159,7 @@
       font-family: 'Inter', sans-serif;
       font-size: 13px;
       font-weight: 300;
-      color: var(--text-desc);
+      color: #bbb;
       letter-spacing: 0.05em;
       text-transform: uppercase;
       font-style: normal;
@@ -180,7 +181,7 @@
       font-family: 'Inter', sans-serif;
       font-size: 13px;
       font-weight: 300;
-      color: var(--text-desc);
+      color: #bbb;
       margin-bottom: 18px;
     }
 
@@ -216,7 +217,7 @@
       line-height: 1.4;
       letter-spacing: 0.01em;
       margin: 0;
-      color: var(--text-main);
+      color: #fff;
       transition: color 0.4s ease;
     }
 
@@ -250,8 +251,8 @@
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      background: var(--chip-bg);
-      border: 1px solid var(--chip-border);
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.1);
       border-radius: 20px;
       padding: 3px 10px;
       transition: background 0.4s ease, border-color 0.4s ease;
@@ -260,7 +261,7 @@
       font-family: 'Inter', sans-serif;
       font-size: 11px;
       font-weight: 400;
-      color: var(--chip-label);
+      color: #aaa;
       text-transform: uppercase;
       letter-spacing: 0.04em;
       transition: color 0.4s ease;
@@ -279,7 +280,7 @@
     .item-desc {
       font-size: 12.5px;
       font-weight: 300;
-      color: var(--text-desc);
+      color: #bbb;
       line-height: 1.45;
       letter-spacing: 0.01em;
       margin-top: 3px;
@@ -375,8 +376,8 @@
     }
     .add-btn {
       background: none;
-      border: 1px solid var(--btn-border);
-      color: var(--btn-text);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #fff;
       width: 28px; height: 28px;
       border-radius: 50%;
       display: flex; justify-content: center; align-items: center;
@@ -386,8 +387,8 @@
       transition: background 0.4s ease, border-color 0.4s ease, color 0.4s ease, transform 0.2s ease;
     }
     .add-btn:hover {
-      background: var(--btn-hover-bg);
-      border-color: var(--btn-hover-border);
+      background: rgba(255,255,255,0.1);
+      border-color: #fff;
     }
     .add-btn.added {
       background: #c17b55;
@@ -717,6 +718,7 @@
   <!-- Sticky canvas (video frame display) -->
   <div id="canvas-viewport">
     <canvas id="main-canvas"></canvas>
+    <div id="video-scrim"></div>
   </div>
 
   <!-- Top Navigation Bar -->
@@ -783,3 +785,4 @@
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
+
