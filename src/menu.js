@@ -93,17 +93,25 @@ function formatPrice(p) {
 }
 
 function renderPriceBlock(item) {
+  // Multi-option items: show chips like "Veg · ₹329  Chicken · ₹369"
   if (item.options) {
-    return item.options.map(o => `<span class="opt-label">${o.label}</span> ${formatPrice(o.price)}`).join('<br/>');
+    const chips = item.options
+      .map(o => `<span class="price-chip"><span class="chip-label">${o.label}</span><span class="chip-price">₹${o.price}</span></span>`)
+      .join('');
+    return `<div class="price-chips">${chips}</div>`;
   }
-  if (item.pour30ml || item.bottle || item.glass) {
-    let parts = [];
-    if (item.pour30ml) parts.push(`<span class="opt-label">30ml</span> ${formatPrice(item.pour30ml)}`);
-    if (item.glass) parts.push(`<span class="opt-label">Glass</span> ${formatPrice(item.glass)}`);
-    if (item.bottle) parts.push(`<span class="opt-label">Bottle</span> ${formatPrice(item.bottle)}`);
-    return parts.join('<br/>');
+  // Spirit / wine sizes
+  if (item.pour30ml != null || item.glass != null || item.bottle != null) {
+    const parts = [];
+    if (item.pour30ml != null) parts.push(`<span class="price-chip"><span class="chip-label">30ml</span><span class="chip-price">₹${item.pour30ml}</span></span>`);
+    if (item.glass    != null) parts.push(`<span class="price-chip"><span class="chip-label">Glass</span><span class="chip-price">₹${item.glass}</span></span>`);
+    if (item.bottle   != null) parts.push(`<span class="price-chip"><span class="chip-label">Bottle</span><span class="chip-price">₹${item.bottle}</span></span>`);
+    return `<div class="price-chips">${parts.join('')}</div>`;
   }
-  return formatPrice(item.price);
+  // Single price
+  if (item.price === 'seasonal') return `<span class="price-flat">Seasonal</span>`;
+  if (item.price == null) return `<span class="price-flat">—</span>`;
+  return `<span class="price-flat">₹${item.price}</span>`;
 }
 
 function getOptions(item) {
@@ -124,25 +132,46 @@ function renderItem(item) {
   const dietDot = item.diet === 'veg'    ? '<span class="diet-dot veg"></span>' :
                   item.diet === 'nonveg' ? '<span class="diet-dot nonveg"></span>' : '';
 
-  const priceHtml = `<div class="item-price">${renderPriceBlock(item)}</div>`;
-  const descHtml  = item.desc ? `<div class="item-desc">${item.desc}</div>` : '';
-  
-  // Mark whether this item needs an option picker before adding
-  const hasOptions = getOptions(item).length > 1;
+  const descHtml = item.desc ? `<div class="item-desc">${item.desc}</div>` : '';
 
-  return `
-    <div class="menu-item" id="item-${item.id}">
-      <div class="item-header">
-        <h4 class="item-name">${dietDot}${item.name}</h4>
-        <div class="price-action-wrapper">
-          ${priceHtml}
+  const hasOptions = getOptions(item).length > 1;
+  const priceHtml  = renderPriceBlock(item);
+
+  if (hasOptions) {
+    // For multi-option items: name on top row, chips + button on second row
+    return `
+      <div class="menu-item has-options" id="item-${item.id}">
+        <div class="item-top-row">
+          <h4 class="item-name">${dietDot}${item.name}</h4>
+        </div>
+        ${descHtml}
+        <div class="item-bottom-row">
+          <div class="item-price">${priceHtml}</div>
           <button class="add-btn"
             data-id="${item.id}"
-            data-has-options="${hasOptions}"
+            data-has-options="true"
             aria-label="Add ${item.name} to list">＋</button>
         </div>
       </div>
-      ${descHtml}
+    `;
+  }
+
+  // Single-price item: name + price + button on same row
+  return `
+    <div class="menu-item" id="item-${item.id}">
+      <div class="item-header">
+        <div class="item-name-wrap">
+          <h4 class="item-name">${dietDot}${item.name}</h4>
+          ${descHtml}
+        </div>
+        <div class="price-action-wrapper">
+          <div class="item-price">${priceHtml}</div>
+          <button class="add-btn"
+            data-id="${item.id}"
+            data-has-options="false"
+            aria-label="Add ${item.name} to list">＋</button>
+        </div>
+      </div>
     </div>
   `;
 }

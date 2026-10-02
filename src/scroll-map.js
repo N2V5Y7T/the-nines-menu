@@ -124,7 +124,9 @@ export function getScrollState(scrollY, layout) {
       menuProgress,
       exitProgress: 0,
       holdMenuScroll: 0,
-      buttonsActive: false,
+      // Allow tapping once the menu is substantially visible (≥85%) —
+      // so user doesn't have to scroll micro-adjust to enter Segment H
+      buttonsActive: menuProgress >= 0.85,
       crossDissolve: null,
     };
   }
@@ -182,7 +184,8 @@ export function getScrollState(scrollY, layout) {
       menuProgress: 1,     // Stay at 1
       exitProgress,
       holdMenuScroll: sec.H_length,
-      buttonsActive: false,  // INACTIVE during exit
+      // Keep tappable while menu is still largely on screen (first 20% of exit)
+      buttonsActive: t <= 0.2,
       crossDissolve: null,
     };
   }

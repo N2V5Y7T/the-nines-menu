@@ -170,48 +170,102 @@
       gap: 16px;
     }
 
-    .item-name {
-      flex: 1;
-      font-family: 'Inter', sans-serif;
-      font-size: 16px;
-      font-weight: 400;
-      line-height: 1.4;
-      letter-spacing: 0.02em;
+    /* Single item: name + desc stacked, price + button on the right */
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
     }
 
-    .item-price {
-      font-size: 16px;
+    .item-name-wrap {
+      flex: 1;
+      min-width: 0; /* allow text to wrap */
+    }
+
+    .item-name {
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      font-weight: 400;
+      line-height: 1.4;
+      letter-spacing: 0.01em;
+      margin: 0;
+    }
+
+    /* Single flat price */
+    .price-flat {
+      font-size: 15px;
       font-weight: 500;
       color: #c17b55;
-      text-align: right;
       white-space: nowrap;
     }
 
-    .item-desc {
-      font-size: 13.5px;
-      font-weight: 300;
-      color: #bbb;
-      line-height: 1.45;
-      letter-spacing: 0.01em;
+    /* Multi-option items: name on top, chips + button on a second row */
+    .menu-item.has-options .item-top-row {
+      margin-bottom: 4px;
+    }
+    .item-bottom-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 8px;
     }
 
-    .opt-label {
-      font-size: 12px;
+    /* Chips */
+    .price-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .price-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 3px 10px;
+    }
+    .chip-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
       font-weight: 400;
       color: #aaa;
-      margin-right: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .chip-price {
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      color: #c17b55;
+    }
+
+    .item-price {
+      /* wrapper, children are .price-flat or .price-chips */
+    }
+
+    .item-desc {
+      font-size: 12.5px;
+      font-weight: 300;
+      color: #999;
+      line-height: 1.45;
+      letter-spacing: 0.01em;
+      margin-top: 3px;
     }
 
     .diet-dot {
       display: inline-block;
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
-      margin-right: 8px;
+      margin-right: 7px;
       transform: translateY(-1px);
+      flex-shrink: 0;
     }
-    .diet-dot.veg { background: #4caf50; box-shadow: 0 0 0 1px #fff, 0 0 4px #000; }
-    .diet-dot.nonveg { background: #f44336; box-shadow: 0 0 0 1px #fff, 0 0 4px #000; }
+    .diet-dot.veg    { background: #4caf50; box-shadow: 0 0 0 1px rgba(255,255,255,0.4); }
+    .diet-dot.nonveg { background: #f44336; box-shadow: 0 0 0 1px rgba(255,255,255,0.4); }
 
     /* ── Loading screen ── */
     #loader {
