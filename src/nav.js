@@ -2,7 +2,7 @@
  * The Nines — Hamburger Navigation HUD
  */
 
-export function initNav(layout, loader) {
+export function initNav(layout, loader, easer) {
   const drawer = document.getElementById('nav-drawer');
   const overlay = document.getElementById('drawer-overlay');
   const openBtn = document.getElementById('nav-hamburger-btn');
@@ -55,6 +55,8 @@ export function initNav(layout, loader) {
       if (!isNaN(targetScroll)) {
         // Phase 5: abort stale loads and prioritise destination
         if (loader) loader.jumpTo(destIdx);
+        // Phase 6: snap easer so display doesn't lag from the old position
+        if (easer) easer.snap(targetScroll);
         window.scrollTo({
           top: targetScroll,
           behavior: 'smooth'

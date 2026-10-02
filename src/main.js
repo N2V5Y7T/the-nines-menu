@@ -9,6 +9,7 @@ import { buildSectionConfig, computeScrollLayout } from './config.js';
 import { getScrollState } from './scroll-map.js';
 import { FrameCache } from './frame-cache.js';
 import { SmartLoader } from './loader.js';
+import { ScrollEaser } from './scroll-easer.js';
 import { Renderer } from './renderer.js';
 import { DebugHUD } from './debug-hud.js';
 
@@ -20,6 +21,7 @@ import { initNav } from './nav.js';
 let layout = [];
 let frameCache;
 let loader;          // SmartLoader (Phase 5)
+let easer;           // ScrollEaser (Phase 6)
 let renderer;
 let debugHUD;
 let scrollContainer;
@@ -42,6 +44,7 @@ async function init() {
   canvas = document.getElementById('main-canvas');
   frameCache = new FrameCache();
   loader = new SmartLoader(frameCache, layout);
+  easer  = new ScrollEaser();
   renderer = new Renderer(canvas, frameCache);
   debugHUD = new DebugHUD();
 
@@ -60,8 +63,8 @@ async function init() {
   const totalScroll = layout[layout.length - 1].scrollEnd;
   console.log(`[The Nines] Total scroll height: ${Math.round(totalScroll)}px`);
 
-  // Phase 4: Init Nav and List (Phase 5: pass loader for jumpTo)
-  initNav(layout, loader);
+  // Phase 4: Init Nav and List (Phase 5: pass loader; Phase 6: pass easer for snap)
+  initNav(layout, loader, easer);
   initListUI();
 
   // Set up scroll container height
@@ -113,13 +116,22 @@ function onScroll() {
 
 function tick() {
   rafId = null;
-  const scrollY = window.scrollY;
-  
-  // Skip if position hasn't changed
-  if (scrollY === lastScrollY) return;
+  const realScrollY = window.scrollY;
+
+  // Phase 6: ease the display position toward the real scroll for smooth wheel feel
+  const scrollY = easer ? easer.tick(realScrollY) : realScrollY;
+
+  // Keep firing rAF while still easing (display hasn't caught up to real)
+  const stillEasing = Math.abs(scrollY - realScrollY) > 0.5;
+  if (stillEasing) {
+    rafId = requestAnimationFrame(tick);
+  }
+
+  // Skip full render if neither display nor real position changed
+  if (scrollY === lastScrollY && !stillEasing) return;
   lastScrollY = scrollY;
 
-  // Get state from scroll position
+  // Get state from eased scroll position
   const state = getScrollState(scrollY, layout);
 
   // Render the frame

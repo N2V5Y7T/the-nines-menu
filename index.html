@@ -433,14 +433,132 @@
       font-size: 12px; color: #888; text-align: center;
     }
 
-    /* ── Desktop Constraints (must be at the end to override base styles) ── */
+    /* ─────────────────────────────────────────────────────────────
+       Phase 6 — Responsive, Desktop & Motion Polish
+    ───────────────────────────────────────────────────────────── */
+
+    /* ── Safe-area insets (iOS notch / Dynamic Island) ── */
+    #top-nav {
+      padding-top: max(0px, env(safe-area-inset-top));
+      padding-left: max(24px, env(safe-area-inset-left));
+      padding-right: max(24px, env(safe-area-inset-right));
+    }
+    .drawer {
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .drawer-footer {
+      padding-bottom: max(24px, env(safe-area-inset-bottom));
+    }
+
+    /* ── Desktop / wide viewport: center the 9:16 frame ── */
+    /* Any viewport wider than a 9:16 portrait phone */
     @media (min-aspect-ratio: 9/16) {
-      #canvas-viewport, #top-nav {
+      /* Canvas + nav constrained to 9:16 column */
+      #canvas-viewport,
+      #top-nav {
         left: 50% !important;
         transform: translateX(-50%) !important;
         width: calc(100vh * 9 / 16) !important;
         width: calc(100dvh * 9 / 16) !important;
       }
+
+      /* Menu layer also constrains to the video column */
+      #menu-layer {
+        left: 50%;
+        transform: translateX(-50%);
+        width: calc(100vh * 9 / 16);
+        width: calc(100dvh * 9 / 16);
+      }
+
+      /* Dark side bars with blurred first-frame background (see JS for dynamic bg-image) */
+      body::before,
+      body::after {
+        content: '';
+        position: fixed;
+        top: 0; bottom: 0;
+        width: calc((100vw - (100vh * 9 / 16)) / 2);
+        width: calc((100vw - (100dvh * 9 / 16)) / 2);
+        background: #0a0a0a;
+        z-index: -1;
+      }
+      body::before { left: 0; }
+      body::after  { right: 0; }
+    }
+
+    /* ── Landscape phone: allow wider content column ── */
+    /* e.g. iPhone in landscape — viewport is ~16:9, but still a phone */
+    @media (orientation: landscape) and (max-height: 500px) {
+      /* Relax the 9:16 cap — use the full width so the video fills properly */
+      #canvas-viewport,
+      #top-nav,
+      #menu-layer {
+        left: 0 !important;
+        transform: none !important;
+        width: 100% !important;
+      }
+      body::before, body::after { display: none; }
+
+      /* Tighten top nav height so it doesn't eat too much landscape space */
+      #top-nav {
+        height: 52px;
+      }
+
+      /* Smaller text on landscape phone */
+      .group-title  { font-size: 32px; }
+      .section-title { font-size: 22px; }
+      .item-name    { font-size: 14px; }
+      .item-price   { font-size: 13px; }
+    }
+
+    /* ── Minimum touch-target size: 44×44px (WCAG 2.5.5) ── */
+    #nav-hamburger-btn,
+    #nav-list-btn,
+    .add-btn,
+    .remove-btn,
+    .close-drawer-btn,
+    .nav-link {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    /* add-btn is circular — override to keep it round but still 44×44 tap area */
+    .add-btn {
+      width: 28px;
+      height: 28px;
+      position: relative;
+    }
+    .add-btn::after {
+      content: '';
+      position: absolute;
+      inset: -8px; /* expands tap area to 44px without changing visual size */
+    }
+
+    /* ── prefers-reduced-motion ── */
+    @media (prefers-reduced-motion: reduce) {
+      /* Disable smooth scroll on nav jumps */
+      html { scroll-behavior: auto !important; }
+
+      /* Skip entrance / exit transforms — just fade */
+      .group-title, .sec-header {
+        transform: none !important;
+        transition: opacity 0.15s ease;
+      }
+      .menu-content {
+        transform: none !important;
+        transition: opacity 0.15s ease;
+      }
+
+      /* No transform on drawers — just appear */
+      .drawer {
+        transition: opacity 0.2s ease !important;
+        transform: none !important;
+      }
+      .left-drawer  { opacity: 0; pointer-events: none; }
+      .right-drawer { opacity: 0; pointer-events: none; }
+      .drawer.open  { opacity: 1; pointer-events: auto; }
+
+      /* Disable the add-btn pop animation */
+      .add-btn { transition: background 0.1s, border-color 0.1s; }
     }
   </style>
 </head>
