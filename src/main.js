@@ -114,6 +114,48 @@ function onScroll() {
   rafId = requestAnimationFrame(tick);
 }
 
+const themeAnalyzerCanvas = document.createElement('canvas');
+themeAnalyzerCanvas.width = 64;
+themeAnalyzerCanvas.height = 64;
+const themeCtx = themeAnalyzerCanvas.getContext('2d', { willReadFrequently: true });
+
+function analyzeTheme(image) {
+  themeCtx.drawImage(image, 0, 0, 64, 64);
+  const data = themeCtx.getImageData(0, 0, 64, 64).data;
+  let r=0, g=0, b=0, count=0;
+  for (let i = 0; i < data.length; i += 16) {
+    r += data[i]; g += data[i+1]; b += data[i+2];
+    count++;
+  }
+  const lum = (0.299*(r/count) + 0.587*(g/count) + 0.114*(b/count));
+  return lum > 140 ? 'light' : 'dark';
+}
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+  if (theme === 'light') {
+    // Video is bright -> text must be dark
+    root.style.setProperty('--text-main', '#111');
+    root.style.setProperty('--text-muted', '#555');
+    root.style.setProperty('--text-desc', '#444');
+    root.style.setProperty('--text-shadow', '0 2px 16px rgba(255,255,255,0.7), 0 1px 3px rgba(255,255,255,1)');
+    root.style.setProperty('--chip-bg', 'rgba(0,0,0,0.06)');
+    root.style.setProperty('--chip-border', 'rgba(0,0,0,0.15)');
+    root.style.setProperty('--chip-label', '#555');
+    root.style.setProperty('--btn-border', 'rgba(0,0,0,0.4)');
+  } else {
+    // Video is dark -> text must be light (default)
+    root.style.setProperty('--text-main', '#fff');
+    root.style.setProperty('--text-muted', '#999');
+    root.style.setProperty('--text-desc', '#bbb');
+    root.style.setProperty('--text-shadow', '0 2px 16px rgba(0,0,0,0.5), 0 1px 3px rgba(0,0,0,0.9)');
+    root.style.setProperty('--chip-bg', 'rgba(255,255,255,0.07)');
+    root.style.setProperty('--chip-border', 'rgba(255,255,255,0.1)');
+    root.style.setProperty('--chip-label', '#aaa');
+    root.style.setProperty('--btn-border', 'rgba(255,255,255,0.3)');
+  }
+}
+
 function tick() {
   rafId = null;
   const realScrollY = window.scrollY;
@@ -136,6 +178,18 @@ function tick() {
 
   // Render the frame
   renderer.render(state);
+
+  // Dynamic Theme (Phase 7b): Check video brightness and adapt text legibility
+  if (state.sectionIndex >= 0) {
+    const sec = layout[state.sectionIndex];
+    const frameImg = frameCache.getFrame(sec.key, state.frameIndex) || frameCache.nearestFrame(sec.key, state.frameIndex);
+    if (frameImg) {
+      if (!frameImg.analyzedLum) {
+        frameImg.analyzedLum = analyzeTheme(frameImg);
+      }
+      applyTheme(frameImg.analyzedLum);
+    }
+  }
 
   // Sync the DOM menu overlay
   updateMenuState(state, layout, viewportHeight);
