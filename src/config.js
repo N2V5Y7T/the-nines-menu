@@ -67,7 +67,7 @@ export async function buildSectionConfig() {
         frameCount: m.frameCount,
         holdFrame: m.holdFrame,
         holdP: m.holdFrame / m.frameCount,
-        scrubLengthVh: 120,  // shorter scrub for intros
+        scrubLengthVh: 200,  // shorter scrub for intros
         estimatedMenuHeightPx: 0,  // no menu items in group intro
         hasMenu: false,
         placeholderBytes: m.placeholderBytes,
@@ -96,7 +96,7 @@ export async function buildSectionConfig() {
         frameCount: m.frameCount,
         holdFrame: sec.holdFrame ?? m.holdFrame,
         holdP,
-        scrubLengthVh: sec.scrubLengthVh || 150,
+        scrubLengthVh: sec.scrubLengthVh || 280,
         estimatedMenuHeightPx: estimateMenuHeight(sec),
         hasMenu: true,
         items: sec.items || null,
@@ -194,4 +194,5 @@ export function computeScrollLayout(sections, vh) {
     return layout;
   });
 }
+
 
