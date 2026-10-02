@@ -105,6 +105,9 @@ async function init() {
 // ── Scroll handler ──────────────────────────────────────────────
 function onScroll() {
   if (rafId) return;  // coalesce to rAF
+  rafId = requestAnimationFrame(tick);
+}
+
 function tick() {
   rafId = null;
   const realScrollY = window.scrollY;
