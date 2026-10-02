@@ -32,12 +32,21 @@ export class Renderer {
     const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
     const rect = this.canvas.getBoundingClientRect();
 
-    this.canvas.width = rect.width * dpr;
-    this.canvas.height = rect.height * dpr;
+    console.log(`[Renderer] Resize: rect=${rect.width}x${rect.height}, dpr=${dpr}`);
+
+    // Fallback if styling failed (e.g. dvh not supported)
+    const w = rect.width || window.innerWidth;
+    const h = rect.height || window.innerHeight;
+
+    this.canvas.width = w * dpr;
+    this.canvas.height = h * dpr;
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    this._displayWidth = rect.width;
-    this._displayHeight = rect.height;
+    this._displayWidth = w;
+    this._displayHeight = h;
+    
+    // Force a redraw on resize
+    this._lastDrawnKey = null;
   }
 
   /**
@@ -53,12 +62,12 @@ export class Renderer {
       // ── Cross-dissolve between two sections ──
       this._renderCrossDissolve(
         key, frameIndex,
-        crossDissolve.nextSection.key, 0,  // next section starts at frame 0
+        crossDissolve.nextSection.key, 0,
         crossDissolve.progress
       );
     } else {
-      // ── Single frame ──
-      this._renderFrame(key, frameIndex);
+      // ── Single frame (pass section for blur-up placeholder) ──
+      this._renderFrame(key, frameIndex, section);
     }
 
     // Maintain decoded-frame window
@@ -67,8 +76,9 @@ export class Renderer {
 
   /**
    * Draw a single frame from a section.
+   * Falls back to the section's blur placeholder if no frame is loaded yet.
    */
-  _renderFrame(sectionKey, frameIndex) {
+  _renderFrame(sectionKey, frameIndex, section) {
     // Skip redraw if same frame
     if (this._lastDrawnKey === sectionKey && this._lastDrawnFrame === frameIndex) {
       return;
@@ -76,15 +86,49 @@ export class Renderer {
 
     const img = this.frameCache.nearestFrame(sectionKey, frameIndex);
     if (!img) {
-      // No frame at all — show black (should only happen during initial load)
-      this.ctx.fillStyle = '#000';
-      this.ctx.fillRect(0, 0, this._displayWidth, this._displayHeight);
+      // No frame yet — draw blur placeholder if available
+      this._drawPlaceholder(section);
       return;
     }
 
     this._drawImageCover(img);
     this._lastDrawnKey = sectionKey;
     this._lastDrawnFrame = frameIndex;
+  }
+
+  /**
+   * Draw the section's blurred placeholder (tiny WebP blob stored in manifest).
+   * Cached as an Image per section key.
+   */
+  _drawPlaceholder(section) {
+    if (!section) {
+      this.ctx.fillStyle = '#0a0a0a';
+      this.ctx.fillRect(0, 0, this._displayWidth, this._displayHeight);
+      return;
+    }
+    const key = section.key;
+    if (!this._placeholders) this._placeholders = new Map();
+
+    let ph = this._placeholders.get(key);
+    if (!ph) {
+      ph = { state: 'loading', img: null };
+      this._placeholders.set(key, ph);
+      // Load the placeholder — it's the first frame (frame0001.webp) since that's guaranteed small
+      const img = new Image();
+      img.onload = () => { ph.img = img; ph.state = 'loaded'; this._lastDrawnFrame = -1; };
+      img.src = `${section.framePath}frame0001.webp`;
+    }
+
+    if (ph.state === 'loaded' && ph.img) {
+      // Apply CSS blur via canvas filter (supported in all modern browsers)
+      this.ctx.filter = 'blur(12px)';
+      this._drawImageCover(ph.img);
+      this.ctx.filter = 'none';
+    } else {
+      // Placeholder not yet ready — show a solid dark background
+      this.ctx.fillStyle = '#0a0a0a';
+      this.ctx.fillRect(0, 0, this._displayWidth, this._displayHeight);
+    }
   }
 
   /**

@@ -2,7 +2,7 @@
  * The Nines — Hamburger Navigation HUD
  */
 
-export function initNav(layout) {
+export function initNav(layout, loader) {
   const drawer = document.getElementById('nav-drawer');
   const overlay = document.getElementById('drawer-overlay');
   const openBtn = document.getElementById('nav-hamburger-btn');
@@ -13,11 +13,11 @@ export function initNav(layout) {
   let html = '';
   let currentGroup = null;
 
+  let idx = 0;
   layout.forEach(sec => {
     // If we enter a new group, output a group header if this section isn't a group-intro
     if (sec.groupKey && sec.groupKey !== currentGroup) {
       currentGroup = sec.groupKey;
-      // If the first section of this group is NOT a group-intro, output a static header
       if (sec.type !== 'group-intro' && sec.groupLabel) {
         html += `<div class="nav-group-header">${sec.groupLabel}</div>`;
       }
@@ -25,10 +25,11 @@ export function initNav(layout) {
 
     const isGroup = sec.type === 'group-intro';
     const className = isGroup ? 'nav-link group-link' : 'nav-link section-link';
-    
+
     if (sec.label) {
-      html += `<button class="${className}" data-scroll="${sec.H_start}">${sec.label}</button>`;
+      html += `<button class="${className}" data-scroll="${sec.H_start}" data-idx="${idx}">${sec.label}</button>`;
     }
+    idx++;
   });
   linksContainer.innerHTML = html;
 
@@ -50,7 +51,10 @@ export function initNav(layout) {
   linksContainer.addEventListener('click', (e) => {
     if (e.target.classList.contains('nav-link')) {
       const targetScroll = parseFloat(e.target.getAttribute('data-scroll'));
+      const destIdx = parseInt(e.target.getAttribute('data-idx') || '0', 10);
       if (!isNaN(targetScroll)) {
+        // Phase 5: abort stale loads and prioritise destination
+        if (loader) loader.jumpTo(destIdx);
         window.scrollTo({
           top: targetScroll,
           behavior: 'smooth'

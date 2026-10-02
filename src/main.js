@@ -1,13 +1,14 @@
 /**
- * The Nines — Main Entry Point (Phase 2: Core Scroll-Scrub Engine)
- * 
- * Orchestrates: config loading → scroll container setup → 
+ * The Nines — Main Entry Point
+ *
+ * Orchestrates: config loading → scroll container setup →
  * scroll listener → frame loading → canvas rendering → debug HUD.
  */
 
 import { buildSectionConfig, computeScrollLayout } from './config.js';
 import { getScrollState } from './scroll-map.js';
 import { FrameCache } from './frame-cache.js';
+import { SmartLoader } from './loader.js';
 import { Renderer } from './renderer.js';
 import { DebugHUD } from './debug-hud.js';
 
@@ -18,6 +19,7 @@ import { initNav } from './nav.js';
 // ── Global state ────────────────────────────────────────────────
 let layout = [];
 let frameCache;
+let loader;          // SmartLoader (Phase 5)
 let renderer;
 let debugHUD;
 let scrollContainer;
@@ -25,9 +27,6 @@ let canvas;
 let rafId = null;
 let lastScrollY = -1;
 let viewportHeight = window.innerHeight;
-
-// Sections currently loading / loaded
-const loadedSections = new Set();
 
 // ── Init ────────────────────────────────────────────────────────
 async function init() {
@@ -42,11 +41,12 @@ async function init() {
   // Set up canvas & core systems
   canvas = document.getElementById('main-canvas');
   frameCache = new FrameCache();
+  loader = new SmartLoader(frameCache, layout);
   renderer = new Renderer(canvas, frameCache);
   debugHUD = new DebugHUD();
 
-  // Load first section immediately
-  loadSectionFrames(0, 'high');
+  // Kick off loading section 0 (current) at high priority
+  loader.jumpTo(0);
 
   // Phase 3: Build DOM menu and measure real heights
   buildMenuDOM(layout);
@@ -60,8 +60,8 @@ async function init() {
   const totalScroll = layout[layout.length - 1].scrollEnd;
   console.log(`[The Nines] Total scroll height: ${Math.round(totalScroll)}px`);
 
-  // Phase 4: Init Nav and List
-  initNav(layout);
+  // Phase 4: Init Nav and List (Phase 5: pass loader for jumpTo)
+  initNav(layout, loader);
   initListUI();
 
   // Set up scroll container height
@@ -77,7 +77,7 @@ async function init() {
   await new Promise(resolve => {
     const checkReady = () => {
       const firstKey = layout[0].key;
-      const progress = frameCache.getProgress(firstKey);
+      const progress = loader.getProgress(firstKey);
       if (loaderBar) loaderBar.style.width = `${Math.round(progress * 100)}%`;
       if (loaderText) loaderText.textContent = `Loading ${Math.round(progress * 100)}%`;
 
@@ -128,53 +128,12 @@ function tick() {
   // Sync the DOM menu overlay
   updateMenuState(state, layout, viewportHeight);
 
-  // Manage section loading
-  manageSectionLoading(state);
+  // Phase 5: Smart loading — advance queue based on scroll position
+  loader.advance(state);
 
   // Update debug HUD
   const totalScroll = layout.length > 0 ? layout[layout.length - 1].scrollEnd : 0;
   debugHUD.update(state, scrollY, totalScroll);
-}
-
-// ── Section loading strategy ────────────────────────────────────
-function manageSectionLoading(state) {
-  const currentIdx = state.sectionIndex;
-
-  // Load current section if not loaded
-  loadSectionFrames(currentIdx, 'high');
-
-  // Preload next section when ~70% through current
-  if (state.segmentProgress > 0.7 || state.segment === 'C' || state.segment === 'J') {
-    const nextIdx = currentIdx + 1;
-    if (nextIdx < layout.length) {
-      loadSectionFrames(nextIdx, 'low');
-    }
-  }
-
-  // Also preload if we're in a cross-dissolve
-  if (state.crossDissolve) {
-    loadSectionFrames(state.crossDissolve.nextSectionIndex, 'high');
-  }
-
-  // Abort sections that are far away (more than 2 ahead or behind)
-  // But keep compressed data cached — only abort in-progress loads
-  for (const key of loadedSections) {
-    const secIdx = layout.findIndex(s => s.key === key);
-    if (secIdx >= 0 && Math.abs(secIdx - currentIdx) > 3) {
-      // Don't unload — just stop loading if in progress
-      // The browser HTTP cache keeps compressed data
-    }
-  }
-}
-
-function loadSectionFrames(sectionIndex, priority) {
-  if (sectionIndex < 0 || sectionIndex >= layout.length) return;
-  const sec = layout[sectionIndex];
-  if (loadedSections.has(sec.key)) return;
-
-  loadedSections.add(sec.key);
-  frameCache.loadSection(sec.key, sec.framePath, sec.frameCount, priority);
-  console.log(`[The Nines] Loading ${sec.key} (${priority})`);
 }
 
 // ── Resize handler ──────────────────────────────────────────────
