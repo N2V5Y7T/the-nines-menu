@@ -34,6 +34,33 @@ export function toggleItem(id, btnEl) {
   renderDrawer();
 }
 
+/**
+ * Add a specific variant (e.g. "Chicken ₹369") of a multi-option item.
+ * Uses a composite key so the same dish can have multiple variants added.
+ */
+export function addVariant(baseId, variantLabel, variantPrice) {
+  const baseItem = allItemsMap.get(baseId);
+  if (!baseItem) return;
+
+  // Composite key: "manchow-soup:Chicken"
+  const variantId = `${baseId}:${variantLabel}`;
+
+  if (selectedItems.has(variantId)) {
+    // Already in list — remove it (toggle off)
+    selectedItems.delete(variantId);
+  } else {
+    selectedItems.set(variantId, {
+      ...baseItem,
+      id: variantId,
+      name: `${baseItem.name} (${variantLabel})`,
+      price: variantPrice,
+    });
+  }
+
+  updateHUD();
+  renderDrawer();
+}
+
 export function updateHUD() {
   const count = selectedItems.size;
   const badge = document.getElementById('list-count');

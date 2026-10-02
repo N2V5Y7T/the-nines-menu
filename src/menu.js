@@ -5,7 +5,86 @@
  * and syncs CSS transforms/opacities to the current scroll state.
  */
 
-import { registerItem, toggleItem } from './list.js';
+import { registerItem, toggleItem, addVariant } from './list.js';
+
+/**
+ * Shows a mobile bottom sheet letting the user pick one variant
+ * (e.g. Veg / Chicken / Prawns) before adding to the list.
+ */
+function showOptionPicker(itemId, triggerBtn) {
+  const item = (() => {
+    // pull item out of the global registry via a little trick —
+    // we broadcast a request and allItemsMap in list.js has the data
+    // Instead, keep a local copy in a module-level Map
+    return _itemRegistry.get(itemId);
+  })();
+  if (!item) return;
+
+  const options = getOptions(item);
+  if (!options.length) return;
+
+  // Remove any existing picker
+  const existing = document.getElementById('option-picker');
+  if (existing) existing.remove();
+  const existingBg = document.getElementById('option-picker-bg');
+  if (existingBg) existingBg.remove();
+
+  // Background scrim
+  const bg = document.createElement('div');
+  bg.id = 'option-picker-bg';
+  bg.addEventListener('click', () => { picker.remove(); bg.remove(); });
+  document.body.appendChild(bg);
+  // Trigger open animation
+  requestAnimationFrame(() => bg.classList.add('open'));
+
+  // Sheet
+  const picker = document.createElement('div');
+  picker.id = 'option-picker';
+  picker.setAttribute('role', 'dialog');
+  picker.setAttribute('aria-label', `Choose option for ${item.name}`);
+
+  // Already-in-list composite keys
+  const inList = options.map(o => {
+    const variantId = `${itemId}:${o.label}`;
+    return { ...o, variantId, inList: false }; // we don't have direct access to selectedItems, but button state will reflect
+  });
+
+  picker.innerHTML = `
+    <div class="picker-handle"></div>
+    <h3 class="picker-title">${item.name}</h3>
+    ${item.desc ? `<p class="picker-desc">${item.desc}</p>` : ''}
+    <div class="picker-options">
+      ${options.map(o => `
+        <button class="picker-option-btn" data-base-id="${itemId}" data-label="${o.label}" data-price="${o.price}">
+          <span class="picker-option-label">${o.label}</span>
+          <span class="picker-option-price">₹${o.price}</span>
+        </button>
+      `).join('')}
+    </div>
+  `;
+
+  picker.addEventListener('click', (e) => {
+    const btn = e.target.closest('.picker-option-btn');
+    if (!btn) return;
+    const baseId = btn.getAttribute('data-base-id');
+    const label  = btn.getAttribute('data-label');
+    const price  = parseFloat(btn.getAttribute('data-price'));
+
+    addVariant(baseId, label, price);
+
+    // Visual feedback on the tapped option
+    btn.classList.toggle('selected');
+
+    // Close after a brief moment so user sees the feedback
+    setTimeout(() => { picker.remove(); bg.remove(); }, 300);
+  });
+
+  document.body.appendChild(picker);
+  requestAnimationFrame(() => picker.classList.add('open'));
+}
+
+// Module-level registry so showOptionPicker can access item data
+const _itemRegistry = new Map();
 
 function formatPrice(p) {
   if (p === 'seasonal') return 'Seasonal';
@@ -27,23 +106,40 @@ function renderPriceBlock(item) {
   return formatPrice(item.price);
 }
 
-function renderItem(item) {
-  // Register item for the list manager
-  registerItem(item);
+function getOptions(item) {
+  // Returns an array of { label, price } for any item that has variants
+  if (item.options) return item.options;
+  const variants = [];
+  if (item.pour30ml != null) variants.push({ label: '30ml', price: item.pour30ml });
+  if (item.glass != null)    variants.push({ label: 'Glass', price: item.glass });
+  if (item.bottle != null)   variants.push({ label: 'Bottle', price: item.bottle });
+  return variants;
+}
 
-  const dietDot = item.diet === 'veg' ? '<span class="diet-dot veg"></span>' :
+function renderItem(item) {
+  // Register item for the list manager AND local picker registry
+  registerItem(item);
+  _itemRegistry.set(item.id, item);
+
+  const dietDot = item.diet === 'veg'    ? '<span class="diet-dot veg"></span>' :
                   item.diet === 'nonveg' ? '<span class="diet-dot nonveg"></span>' : '';
-  
+
   const priceHtml = `<div class="item-price">${renderPriceBlock(item)}</div>`;
-  const descHtml = item.desc ? `<div class="item-desc">${item.desc}</div>` : '';
+  const descHtml  = item.desc ? `<div class="item-desc">${item.desc}</div>` : '';
   
+  // Mark whether this item needs an option picker before adding
+  const hasOptions = getOptions(item).length > 1;
+
   return `
     <div class="menu-item" id="item-${item.id}">
       <div class="item-header">
         <h4 class="item-name">${dietDot}${item.name}</h4>
         <div class="price-action-wrapper">
           ${priceHtml}
-          <button class="add-btn" data-id="${item.id}" aria-label="Add to list">＋</button>
+          <button class="add-btn"
+            data-id="${item.id}"
+            data-has-options="${hasOptions}"
+            aria-label="Add ${item.name} to list">＋</button>
         </div>
       </div>
       ${descHtml}
@@ -77,7 +173,7 @@ export function buildMenuDOM(layout) {
         sec.subgroups.forEach(sg => {
           html += `<div class="subgroup">`;
           if (sg.label) html += `<h3 class="subgroup-title">${sg.label}</h3>`;
-          if (sg.note) html += `<p class="subgroup-note">${sg.note}</p>`;
+          if (sg.note)  html += `<p class="subgroup-note">${sg.note}</p>`;
           html += `<div class="items-grid">${sg.items.map(renderItem).join('')}</div>`;
           html += `</div>`;
         });
@@ -94,12 +190,17 @@ export function buildMenuDOM(layout) {
     sec.domElement = el;
   });
 
-  // Global event delegation for menu interactions
+  // Global event delegation — show option picker or add directly
   layer.addEventListener('click', (e) => {
-    // Traverse up to find button if they clicked an inner element
     const btn = e.target.closest('.add-btn');
-    if (btn) {
-      toggleItem(btn.getAttribute('data-id'), btn);
+    if (!btn) return;
+    const id = btn.getAttribute('data-id');
+    const hasOptions = btn.getAttribute('data-has-options') === 'true';
+
+    if (hasOptions) {
+      showOptionPicker(id, btn);
+    } else {
+      toggleItem(id, btn);
     }
   });
 }
