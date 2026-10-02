@@ -13,7 +13,7 @@
 
 ---
 
-## Current Status: PHASE 5 COMPLETE — Smart loading queue, abort-on-jump, blur-up live
+## Current Status: PHASE 6 COMPLETE — Responsive, desktop side bars, wheel easing, safe-area insets live
 
 ---
 
@@ -51,6 +51,19 @@
 - `jumpTo(destIdx)` called from hamburger nav tap; aborts stale loads for sections >2 away; immediately feeds destination at high priority.
 - **Blur-up placeholder**: renderer now draws first frame blurred (CSS `filter: blur(12px)`) while real frames are loading — no more black flashes.
 - Loading bar now driven by real `SmartLoader.getProgress()` — no fake timer.
+
+### Phase 6 — Responsive & Motion Polish ✅ COMPLETE (eef504b)
+**CSS:**
+- **Desktop**: `#canvas-viewport`, `#top-nav`, `#menu-layer` all constrained to a centered `9:16` column; `body::before/after` pseudo-elements fill the letterbox with `#0a0a0a` side bars.
+- **Landscape phones** (`max-height: 500px`): all columns expand to 100% width, nav shrinks to `52px`, typography scaled down.
+- **Safe-area insets**: `#top-nav` and drawers correctly pad for iPhone notch, Dynamic Island, and home-bar using `env(safe-area-inset-*)`.
+- **Touch targets**: all interactive elements guaranteed `44×44px` minimum hit area (WCAG 2.5.5); `.add-btn` uses `::after` pseudo-element to expand tap zone without changing visual size.
+- **`prefers-reduced-motion`**: menu entrance/exit skips transforms (opacity-only fade), drawers appear instantly, `.add-btn` pop animation disabled, nav smooth-scroll bypassed.
+
+**JS:**
+- `scroll-easer.js`: exponential ease (`factor 0.18`) toward real `scrollY` per rAF — eliminates trackpad shudder; auto-bypasses when `prefers-reduced-motion` is active.
+- `main.js`: `easer.tick()` called in `tick()` with self-sustaining rAF loop while display hasn't caught up.
+- `nav.js`: `easer.snap(targetScroll)` called on nav jump so display position teleports to destination instantly.
 
 ---
 
