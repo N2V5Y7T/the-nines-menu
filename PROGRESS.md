@@ -13,7 +13,7 @@
 
 ---
 
-## Current Status: PHASE 6 COMPLETE — Responsive, desktop side bars, wheel easing, safe-area insets live
+## Current Status: PHASE 7 COMPLETE — SEO JSON-LD, No-JS HTML Fallback, CSV Converter live
 
 ---
 
@@ -64,6 +64,12 @@
 - `scroll-easer.js`: exponential ease (`factor 0.18`) toward real `scrollY` per rAF — eliminates trackpad shudder; auto-bypasses when `prefers-reduced-motion` is active.
 - `main.js`: `easer.tick()` called in `tick()` with self-sustaining rAF loop while display hasn't caught up.
 - `nav.js`: `easer.snap(targetScroll)` called on nav jump so display position teleports to destination instantly.
+
+### Phase 7 — Fallback, SEO & Extras ✅ COMPLETE (2971b0f)
+- **Vite SEO Plugin**: Wrote a custom Vite plugin (`vite.config.js`) that intercepts the HTML during dev/build. It parses `menu.json` and automatically injects:
+  - **JSON-LD Schema**: A full `Restaurant` > `Menu` > `MenuSection` > `MenuItem` schema tree. It natively understands options, prices, and maps `diet: 'veg'` to `https://schema.org/VegetarianDiet`. This makes Google index the menu perfectly.
+  - **No-JS HTML Fallback**: A `<noscript>` tag containing the entire menu in semantic HTML (`h1`, `h2`, `p`, etc.). This guarantees search engines can crawl the text content and ensures users with JavaScript disabled still see the menu and prices.
+- **CSV Converter Utility**: Created `scripts/csv-to-menu.js`, a Node script allowing the restaurant owner to edit their menu in Excel/CSV and automatically compile it into the complex nested JSON format required by the site.
 
 ---
 
