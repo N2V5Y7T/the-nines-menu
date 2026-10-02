@@ -4,6 +4,7 @@ export class ScrollEaser {
   constructor() {
     this._display = window.scrollY;
     this._reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this._isTouchDevice = window.matchMedia('(pointer: coarse)').matches; // Native mobile touch
 
     // Track user physical interaction for dynamic easing
     this._isInteracting = false;
@@ -26,7 +27,7 @@ export class ScrollEaser {
   }
 
   tick(realScrollY) {
-    if (this._reduced) {
+    if (this._reduced || this._isTouchDevice) { // Bypass completely for native mobile feel
       this._display = realScrollY;
       return realScrollY;
     }
@@ -53,3 +54,4 @@ export class ScrollEaser {
     this._display = scrollY;
   }
 }
+
