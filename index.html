@@ -25,7 +25,14 @@
       color: #fff;
       font-family: 'Inter', system-ui, sans-serif;
       margin: 0;
-      /* Remove overflow-x: hidden and min-height constraints to ensure vertical scroll works */
+
+      /* Cinematic initial load state */
+      opacity: 0;
+      filter: blur(20px);
+      transform: scale(1.05);
+      transition: opacity 1.8s cubic-bezier(0.16, 1, 0.3, 1), 
+                  filter 1.8s cubic-bezier(0.16, 1, 0.3, 1), 
+                  transform 1.8s cubic-bezier(0.16, 1, 0.3, 1);
 
       /* Dynamic Theme Variables (Updated via JS based on video background luminance) */
       --text-main: #fff;
@@ -36,6 +43,12 @@
       --chip-border: rgba(255,255,255,0.1);
       --chip-label: #aaa;
       --btn-border: rgba(255,255,255,0.3);
+    }
+    
+    body.ready {
+      opacity: 1;
+      filter: blur(0);
+      transform: scale(1);
     }
 
     /* ── Fixed canvas viewport ── */
@@ -161,7 +174,7 @@
       font-family: 'Inter', sans-serif;
       font-size: 13px;
       font-weight: 300;
-      color: #bbb;
+      color: var(--text-desc);
       margin-bottom: 18px;
     }
 
@@ -175,13 +188,6 @@
       display: flex;
       flex-direction: column;
       gap: 5px;
-    }
-
-    .item-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 16px;
     }
 
     /* Single item: name + desc stacked, price + button on the right */
@@ -204,6 +210,8 @@
       line-height: 1.4;
       letter-spacing: 0.01em;
       margin: 0;
+      color: var(--text-main);
+      transition: color 0.4s ease;
     }
 
     /* Single flat price */
@@ -236,18 +244,20 @@
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(255,255,255,0.1);
+      background: var(--chip-bg);
+      border: 1px solid var(--chip-border);
       border-radius: 20px;
       padding: 3px 10px;
+      transition: background 0.4s ease, border-color 0.4s ease;
     }
     .chip-label {
       font-family: 'Inter', sans-serif;
       font-size: 11px;
       font-weight: 400;
-      color: #aaa;
+      color: var(--chip-label);
       text-transform: uppercase;
       letter-spacing: 0.04em;
+      transition: color 0.4s ease;
     }
     .chip-price {
       font-family: 'Inter', sans-serif;
@@ -263,10 +273,11 @@
     .item-desc {
       font-size: 12.5px;
       font-weight: 300;
-      color: #999;
+      color: var(--text-desc);
       line-height: 1.45;
       letter-spacing: 0.01em;
       margin-top: 3px;
+      transition: color 0.4s ease;
     }
 
     .diet-dot {
@@ -281,49 +292,7 @@
     .diet-dot.veg    { background: #4caf50; box-shadow: 0 0 0 1px rgba(255,255,255,0.4); }
     .diet-dot.nonveg { background: #f44336; box-shadow: 0 0 0 1px rgba(255,255,255,0.4); }
 
-    /* ── Loading screen ── */
-    #loader {
-      position: fixed;
-      inset: 0;
-      z-index: 100;
-      background: #0a0a0a;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      transition: opacity 0.5s ease-out;
-    }
-    #loader.done {
-      opacity: 0;
-      pointer-events: none;
-    }
-    #loader-logo {
-      width: 120px;
-      height: auto;
-      margin-bottom: 24px;
-      opacity: 0.6;
-    }
-    #loader-bar-bg {
-      width: 160px;
-      height: 3px;
-      background: #222;
-      border-radius: 2px;
-      overflow: hidden;
-    }
-    #loader-bar {
-      height: 100%;
-      width: 0%;
-      background: #c17b55;
-      border-radius: 2px;
-      transition: width 0.15s ease-out;
-    }
-    #loader-text {
-      font-size: 11px;
-      color: #555;
-      margin-top: 10px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
+
     /* ── Phase 4 UI: Navigation, Drawers, Buttons ── */
     #top-nav {
       position: fixed;
@@ -395,19 +364,19 @@
     }
     .add-btn {
       background: none;
-      border: 1px solid rgba(255,255,255,0.3);
-      color: #fff;
+      border: 1px solid var(--btn-border);
+      color: var(--btn-text);
       width: 28px; height: 28px;
       border-radius: 50%;
       display: flex; justify-content: center; align-items: center;
       cursor: pointer;
       font-size: 16px;
       font-weight: 300;
-      transition: all 0.2s ease;
+      transition: background 0.4s ease, border-color 0.4s ease, color 0.4s ease, transform 0.2s ease;
     }
     .add-btn:hover {
-      background: rgba(255,255,255,0.1);
-      border-color: #fff;
+      background: var(--btn-hover-bg);
+      border-color: var(--btn-hover-border);
     }
     .add-btn.added {
       background: #c17b55;
@@ -732,12 +701,7 @@
 </head>
 <body>
 
-  <!-- Loading screen (progress-based, not a fake timer) -->
-  <div id="loader">
-    <img id="loader-logo" src="/assets/logo.jpg" alt="The Nines" />
-    <div id="loader-bar-bg"><div id="loader-bar"></div></div>
-    <div id="loader-text">Loading…</div>
-  </div>
+
 
   <!-- Sticky canvas (video frame display) -->
   <div id="canvas-viewport">

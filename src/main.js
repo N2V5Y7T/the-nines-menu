@@ -72,25 +72,19 @@ async function init() {
   // Add vh so the maximum scrollY (which is height - vh) equals totalScroll
   scrollContainer.style.height = `${totalScroll + viewportHeight}px`;
 
-  // Poll for loading progress and dismiss loader
-  const loaderBar = document.getElementById('loader-bar');
-  const loaderText = document.getElementById('loader-text');
-  const loaderEl = document.getElementById('loader');
-
+  // Wait for initial frames to load before revealing the screen
   await new Promise(resolve => {
     const checkReady = () => {
       const firstKey = layout[0].key;
       const progress = loader.getProgress(firstKey);
-      if (loaderBar) loaderBar.style.width = `${Math.round(progress * 100)}%`;
-      if (loaderText) loaderText.textContent = `Loading ${Math.round(progress * 100)}%`;
 
-      // Ready when at least 30% loaded (coarse frames available for smooth scrub)
-      if (progress >= 0.3) {
-        // Short minimum display to prevent flash
+      // Ready when at least 20% loaded (coarse frames available for smooth scrub)
+      if (progress >= 0.2) {
+        // Short delay to ensure GPU texture upload
         setTimeout(() => {
-          if (loaderEl) loaderEl.classList.add('done');
+          document.body.classList.add('ready');
           resolve();
-        }, 300);
+        }, 150);
       } else {
         requestAnimationFrame(checkReady);
       }
