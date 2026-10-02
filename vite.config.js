@@ -115,5 +115,6 @@ function seoPlugin() {
 }
 
 export default defineConfig({
+  base: './',
   plugins: [seoPlugin()]
 });
