@@ -44,8 +44,8 @@ function estimateMenuHeight(section) {
  */
 export async function buildSectionConfig() {
   const [manifestRes, menuRes] = await Promise.all([
-    fetch('/frames/manifest.json'),
-    fetch('/assets/menu/the-nines-menu.json'),
+    fetch('./frames/manifest.json'),
+    fetch('./assets/menu/the-nines-menu.json'),
   ]);
   if (!manifestRes.ok) throw new Error(`Failed to load manifest: ${manifestRes.status}`);
   if (!menuRes.ok) throw new Error(`Failed to load menu: ${menuRes.status}`);
@@ -63,7 +63,7 @@ export async function buildSectionConfig() {
         label: group.label,
         type: 'group-intro',
         groupKey: group.key,
-        framePath: `/frames/${group.key}/`,
+        framePath: `./frames/${group.key}/`,
         frameCount: m.frameCount,
         holdFrame: m.holdFrame,
         holdP: m.holdFrame / m.frameCount,
@@ -92,7 +92,7 @@ export async function buildSectionConfig() {
         type: 'section',
         groupKey: group.key,
         groupLabel: group.label,
-        framePath: `/frames/${sec.key}/`,
+        framePath: `./frames/${sec.key}/`,
         frameCount: m.frameCount,
         holdFrame: sec.holdFrame ?? m.holdFrame,
         holdP,
@@ -194,3 +194,4 @@ export function computeScrollLayout(sections, vh) {
     return layout;
   });
 }
+
