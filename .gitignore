@@ -1,8 +1,6 @@
 node_modules/
 dist/
 .vite/
+.env
+.DS_Store
 *.log
-
-public/frames/
-public/assets/logo.jpg
-node_modules/
