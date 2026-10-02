@@ -13,7 +13,7 @@
 
 ---
 
-## Current Status: PHASE 7 COMPLETE — SEO JSON-LD, No-JS HTML Fallback, CSV Converter live
+## Current Status: PROJECT COMPLETE — Phase 8 Final QA & Handover live
 
 ---
 
@@ -70,6 +70,11 @@
   - **JSON-LD Schema**: A full `Restaurant` > `Menu` > `MenuSection` > `MenuItem` schema tree. It natively understands options, prices, and maps `diet: 'veg'` to `https://schema.org/VegetarianDiet`. This makes Google index the menu perfectly.
   - **No-JS HTML Fallback**: A `<noscript>` tag containing the entire menu in semantic HTML (`h1`, `h2`, `p`, etc.). This guarantees search engines can crawl the text content and ensures users with JavaScript disabled still see the menu and prices.
 - **CSV Converter Utility**: Created `scripts/csv-to-menu.js`, a Node script allowing the restaurant owner to edit their menu in Excel/CSV and automatically compile it into the complex nested JSON format required by the site.
+
+### Phase 8 — Final QA & Handover ✅ COMPLETE
+- **Final Build**: Executed `npm run build` using Vite. Output generated into `dist/`.
+- **Assets QA**: Verified that all frames (`public/frames/*`), JSON files, fonts, CSS variables, and HTML fallbacks were properly minified, bundled, and included in the production folder.
+- **Handover**: Ready for static deployment to Cloudflare Pages (deploying the `dist` folder).
 
 ---
 
