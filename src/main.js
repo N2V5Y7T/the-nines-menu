@@ -29,6 +29,7 @@ let canvas;
 let rafId = null;
 let lastScrollY = -1;
 let viewportHeight = window.innerHeight;
+let viewportWidth = window.innerWidth;
 
 // ── Init ────────────────────────────────────────────────────────
 async function init() {
@@ -38,6 +39,7 @@ async function init() {
   console.log(`[The Nines] ${sections.length} sections configured`);
 
   viewportHeight = window.innerHeight;
+  viewportWidth = window.innerWidth;
   layout = computeScrollLayout(sections, viewportHeight);
 
   // Set up canvas & core systems
@@ -144,6 +146,8 @@ function tick() {
 
 // ── Resize handler ──────────────────────────────────────────────
 function onResize() {
+  if (window.innerWidth === viewportWidth) return; // Ignore mobile URL bar height shifts
+  viewportWidth = window.innerWidth;
   const vh = window.innerHeight;
   const sections = layout.map(s => ({
     ...s,
@@ -163,3 +167,5 @@ function onResize() {
 init().catch(err => {
   console.error('[The Nines] Init failed:', err);
 });
+
+
