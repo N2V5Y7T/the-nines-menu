@@ -258,48 +258,62 @@
       position: fixed;
       top: 0; left: 0; width: 100%;
       height: 80px;
-      display: flex;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
       align-items: center;
-      padding: 0 24px;
+      padding: 0 16px;
+      padding-top: max(0px, env(safe-area-inset-top));
+      padding-left: max(16px, env(safe-area-inset-left));
+      padding-right: max(16px, env(safe-area-inset-right));
       z-index: 50;
-      /* Subtle dark gradient to ensure text/logo visibility at the very top */
-      background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%);
+      background: linear-gradient(to bottom, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0) 100%);
       pointer-events: none;
     }
     #top-nav > * { pointer-events: auto; }
 
     #nav-hamburger-btn {
       background: none; border: none; color: #fff; cursor: pointer; padding: 8px;
+      justify-self: start;
     }
 
     .logo-container {
       display: flex; justify-content: center; align-items: center;
     }
     #top-logo {
-      height: 28px;
-      border-radius: 2px;
-      /* The logo has a white background. Mix-blend-mode screen + invert makes it transparent with copper turning light blue.
-         Instead, let's keep it as is, or apply a subtle sepia filter to blend it. */
-      mix-blend-mode: screen;
-      filter: invert(1) brightness(1.2) sepia(0.5) hue-rotate(-30deg); /* Approximate copper on transparent */
+      height: 52px;   /* taller so the full crest logo is visible */
+      width: auto;
+      /* White background on the new logo — mix-blend-mode multiply makes white transparent */
+      mix-blend-mode: multiply;
+      filter: invert(1) brightness(1.6) sepia(0.4) hue-rotate(-20deg);
     }
 
     #nav-list-btn {
       background: none; border: none;
       color: #fff;
-      font-family: 'Inter', sans-serif;
-      font-size: 14px;
-      font-weight: 500;
       cursor: pointer;
       padding: 8px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      justify-self: end;
+      position: relative;   /* for badge positioning */
+      display: flex; align-items: center;
+    }
+    /* Cart icon badge */
+    #list-count {
+      position: absolute;
+      top: 2px; right: 2px;
+      background: #c17b55;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      min-width: 16px; height: 16px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0 3px;
+      opacity: 0;
+      transition: opacity 0.2s;
     }
     #list-count.has-items {
-      color: #c17b55;
-      font-weight: 600;
-      display: inline-block;
+      opacity: 1;
     }
 
     /* Add to List Button */
@@ -587,11 +601,17 @@
     </button>
     
     <div class="logo-container">
-      <img src="/assets/logo.jpg" alt="The Nines" id="top-logo" />
+      <img src="/assets/logo-new.png" alt="The Nines" id="top-logo" />
     </div>
 
     <button id="nav-list-btn" aria-label="My List">
-      My List (<span id="list-count">0</span>)
+      <!-- Cart / bag icon -->
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <path d="M16 10a4 4 0 01-8 0"/>
+      </svg>
+      <span id="list-count">0</span>
     </button>
   </header>
 
