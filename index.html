@@ -25,14 +25,7 @@
       color: #fff;
       font-family: 'Inter', system-ui, sans-serif;
       margin: 0;
-
-      /* Cinematic initial load state */
-      opacity: 0;
-      filter: blur(20px);
-      transform: scale(1.05);
-      transition: opacity 1.8s cubic-bezier(0.16, 1, 0.3, 1), 
-                  filter 1.8s cubic-bezier(0.16, 1, 0.3, 1), 
-                  transform 1.8s cubic-bezier(0.16, 1, 0.3, 1);
+      /* Remove overflow-x: hidden and min-height constraints to ensure vertical scroll works */
 
       /* Dynamic Theme Variables (Updated via JS based on video background luminance) */
       --text-main: #fff;
@@ -43,12 +36,6 @@
       --chip-border: rgba(255,255,255,0.1);
       --chip-label: #aaa;
       --btn-border: rgba(255,255,255,0.3);
-    }
-    
-    body.ready {
-      opacity: 1;
-      filter: blur(0);
-      transform: scale(1);
     }
 
     /* ── Fixed canvas viewport ── */
@@ -61,6 +48,20 @@
       height: 100dvh;
       z-index: 0;
       overflow: hidden;
+      
+      /* Cinematic initial load state */
+      opacity: 0;
+      filter: blur(20px);
+      transform: scale(1.05);
+      transition: opacity 1.5s cubic-bezier(0.16, 1, 0.3, 1), 
+                  filter 1.5s cubic-bezier(0.16, 1, 0.3, 1), 
+                  transform 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    body.ready #canvas-viewport {
+      opacity: 1;
+      filter: blur(0);
+      transform: scale(1);
     }
 
     #main-canvas {
@@ -88,6 +89,11 @@
       z-index: 10;
       pointer-events: none;
       color: var(--text-main);
+      opacity: 0;
+      transition: opacity 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    body.ready #menu-layer {
+      opacity: 1;
     }
     
     .menu-section {
@@ -308,6 +314,11 @@
       z-index: 50;
       background: linear-gradient(to bottom, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0) 100%);
       pointer-events: none;
+      opacity: 0;
+      transition: opacity 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    body.ready #top-nav {
+      opacity: 1;
     }
     #top-nav > * { pointer-events: auto; }
 
