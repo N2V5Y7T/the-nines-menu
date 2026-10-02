@@ -13,7 +13,7 @@
 
 ---
 
-## Current Status: PHASE 4 COMPLETE — Navigation, My List, and Cart logic are live
+## Current Status: PHASE 5 COMPLETE — Smart loading queue, abort-on-jump, blur-up live
 
 ---
 
@@ -25,37 +25,32 @@
 | Font combination | **Candidate A** — Playfair Display (400) + Inter (body) |
 | Hosting | **Cloudflare Pages** |
 | Estimated total | Show sum only — **no tax/GST mention** |
-| Dietary tags | **YES** — veg/nonveg dot indicators implemented (`.diet-dot`) |
+| Dietary tags | **YES** — dot indicators implemented (`.diet-dot`), wired to `item.diet` in JSON |
 | Analytics | Privacy-friendly basic (Plausible.io) |
 
 ---
 
 ## Phase History
 
-### Phase 0 — Setup, Inventory & Approvals ✅ COMPLETE (committed: eb74e24)
-- All 19 videos mapped; `menu.json` validated (315 items).
+### Phase 0–2 ✅ COMPLETE — See earlier commits (eb74e24 → 3c3c557)
 
-### Phase 1 — Asset Pipeline ✅ COMPLETE (committed: f6f09ce)
-- **12fps, 720px width, WebP quality=82** selected based on user approval.
-- All 19 videos extracted (1,824 frames total, ~75.8 MB total).
+### Phase 3 — DOM Menu & Styling ✅ COMPLETE (51e1563, fbf98b8)
 
-### Phase 2 — Core Engine ✅ COMPLETE (committed: 3c3c557)
-- `config.js`: Computes scroll boundaries for A/H/X/C/J segments.
-- `scroll-map.js`: Pure function mapping raw scroll pixel position to a state object.
-- `frame-cache.js`: Memory-safe frame sliding window (±10 frames).
-- `renderer.js`: DPR-capped canvas rendering with J-segment cross-dissolve.
+### Phase 4 — Navigation & My List ✅ COMPLETE (72203ec)
+- Top Bar: Hamburger, logo blend, My List counter
+- Hamburger drawer: group headers (Food/Bar/Beverages), indented section links
+- list.js: add/remove, running total, no tax wording
+- Interaction guard: buttons inert outside Segment H
 
-### Phase 3 — DOM Menu & Styling ✅ COMPLETE (committed: 51e1563, fbf98b8)
-- `menu.js`: Generates `#menu-layer` DOM from `menu.json`.
-- **Dynamic Measurement**: Measures true DOM height to compute total scroll length.
-- **Cinematic Choreography**: Text emerges gracefully from the center and floats up.
-- **Premium Typography**: Playfair Display (headings) + Inter (body).
-
-### Phase 4 — Navigation & My List ✅ COMPLETE (committed: 72203ec)
-- **Top Bar**: Fixed header with Hamburger icon, transparent logo overlay, and My List counter.
-- **Menu Drawer**: Dynamically generated side-panel links that scroll to sections.
-- **Cart Logic (`list.js`)**: Real-time sum tracking, add/remove functions, popup drawer.
-- **Interaction Guard**: Added rigorous check so "+" buttons are **inert** when scrolling/scrubbing, and only active when the video is frozen on a hold frame.
+### Phase 5 — Loading Strategy ✅ COMPLETE (eef59e8)
+- `loader.js` — `SmartLoader` class with three priority tiers:
+  - **CRITICAL**: nav jump destination (aborts all distant loads first via `AbortController`)
+  - **HIGH**: current section (always loading)
+  - **PRELOAD**: next 1–2 sections ahead at low priority
+- `advance(state)` called every tick; automatically queues the next section once user is ≥50% through current.
+- `jumpTo(destIdx)` called from hamburger nav tap; aborts stale loads for sections >2 away; immediately feeds destination at high priority.
+- **Blur-up placeholder**: renderer now draws first frame blurred (CSS `filter: blur(12px)`) while real frames are loading — no more black flashes.
+- Loading bar now driven by real `SmartLoader.getProgress()` — no fake timer.
 
 ---
 
