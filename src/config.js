@@ -122,9 +122,9 @@ export function computeScrollLayout(sections, vh) {
 
   return sections.map((sec, index) => {
     const holdP = sec.holdP;
-    const scrubPx = sec.scrubLengthVh * vh;
-    const exitPx = CHOREOGRAPHY.exitLengthVh * vh;
-    const handoffPx = CHOREOGRAPHY.handoffLengthVh * vh;
+    const scrubPx = (sec.scrubLengthVh / 100) * vh;
+    const exitPx = (CHOREOGRAPHY.exitLengthVh / 100) * vh;
+    const handoffPx = (CHOREOGRAPHY.handoffLengthVh / 100) * vh;
 
     // Segment A: video scrubs from p=0 to p=holdP
     const A_length = holdP * scrubPx;
