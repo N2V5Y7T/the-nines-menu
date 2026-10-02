@@ -116,6 +116,7 @@ export class FrameCache {
       }
 
       const img = new Image();
+      img.decoding = 'async';
       img.onload = () => {
         if (!state.abortController.signal.aborted) {
           state.images.set(frameIdx, img);
@@ -235,3 +236,5 @@ export class FrameCache {
     }
   }
 }
+
+

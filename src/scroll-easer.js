@@ -21,7 +21,7 @@
  *   const state = getScrollState(displayY, layout);
  */
 
-const EASE_FACTOR = 0.18;   // 0–1; lower = slower/smoother
+const EASE_FACTOR = 0.35;   // 0–1; lower = slower/smoother
 const SNAP_THRESHOLD = 0.5; // px — snap to target when this close
 
 export class ScrollEaser {
@@ -64,3 +64,4 @@ export class ScrollEaser {
     this._display = scrollY;
   }
 }
+
