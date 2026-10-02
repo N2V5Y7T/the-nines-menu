@@ -26,6 +26,16 @@
       font-family: 'Inter', system-ui, sans-serif;
       margin: 0;
       /* Remove overflow-x: hidden and min-height constraints to ensure vertical scroll works */
+
+      /* Dynamic Theme Variables (Updated via JS based on video background luminance) */
+      --text-main: #fff;
+      --text-muted: #999;
+      --text-desc: #bbb;
+      --text-shadow: 0 2px 16px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.8);
+      --chip-bg: rgba(255,255,255,0.07);
+      --chip-border: rgba(255,255,255,0.1);
+      --chip-label: #aaa;
+      --btn-border: rgba(255,255,255,0.3);
     }
 
     /* ── Fixed canvas viewport ── */
@@ -64,6 +74,7 @@
       height: 100dvh;
       z-index: 10;
       pointer-events: none;
+      color: var(--text-main);
     }
     
     .menu-section {
@@ -75,8 +86,9 @@
       max-width: 414px; /* Mobile safe width */
       padding: 0 24px 10vh;
       pointer-events: auto; /* Let clicks pass to items if needed */
-      text-shadow: 0 2px 16px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.8);
+      text-shadow: var(--text-shadow);
       will-change: transform, opacity;
+      transition: text-shadow 0.4s ease, color 0.4s ease;
     }
 
     .menu-section.group-intro {
@@ -93,11 +105,13 @@
       transform: translateY(calc((1 - var(--cat-prog, 1)) * 12vh));
       text-align: center;
       margin-bottom: 24px;
+      transition: color 0.4s ease;
     }
     .menu-content {
       opacity: var(--menu-prog, 1);
       /* Menu rises smoothly from just below */
       transform: translateY(calc((1 - var(--menu-prog, 1)) * 8vh));
+      transition: color 0.4s ease;
     }
 
     /* Typography */
@@ -108,7 +122,7 @@
       text-align: center;
       text-transform: uppercase;
       letter-spacing: 0.15em;
-      color: #fff;
+      color: var(--text-main);
     }
 
     .section-title {
@@ -117,7 +131,7 @@
       font-weight: 400;
       text-transform: uppercase;
       letter-spacing: 0.15em;
-      color: #f8f8f8;
+      color: var(--text-main);
       margin-bottom: 4px;
     }
 
@@ -125,7 +139,7 @@
       font-family: 'Inter', sans-serif;
       font-size: 13px;
       font-weight: 300;
-      color: #ddd;
+      color: var(--text-desc);
       letter-spacing: 0.05em;
       text-transform: uppercase;
       font-style: normal;
