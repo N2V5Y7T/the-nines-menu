@@ -1,4 +1,4 @@
-/**
+﻿/**
  * The Nines — Scroll Map
  * 
  * Pure function: given absolute scroll position → section state.
@@ -110,9 +110,8 @@ export function getScrollState(scrollY, layout) {
     // Menu content: velocity ramps 0 → 1 px/px (v = 1-(1-e)²) so at e=1 it
     // matches the 1:1 hold scroll exactly — the video's lost speed is handed
     // to the menu, one integrated motion.
-    const L = sec.A_easeLength;
-    const travelled = L * (e - (1 - k * k * k) / 3);
-    const contentEnterY = L * (2 / 3) - travelled;
+        // Menu content: gentle 15vh lift during the ease phase, avoiding the massive 140vh scroll-tied sweep
+    const contentEnterY = (0.15 * vh) * k * k;
 
     state.segment = 'A';
     state.videoProgress = p;
@@ -249,3 +248,5 @@ export function getScrollState(scrollY, layout) {
   state.exitProgress = 1;
   return state;
 }
+
+
