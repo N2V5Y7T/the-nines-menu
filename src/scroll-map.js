@@ -31,12 +31,7 @@ function smoothstep(a, b, x) {
 // content's 1 px/px lift speed (C1 ramp, so the title never jerks).
 const TITLE_LIFT_RAMP = 0.3;
 
-const HIDDEN_UI = Object.freeze({
-  compOpacity: 0,
-  titleOpacity: 0, titleEnterY: 0, titleExitY: 0,
-  contentOpacity: 0, contentEnterY: 0, contentScrollY: 0,
-  scrim: 0,
-});
+
 
 function baseState(sec, idx) {
   return {
@@ -51,7 +46,7 @@ function baseState(sec, idx) {
     holdMenuScroll: 0,        // px scrolled within hold (for menu content)
     buttonsActive: false,     // "+" buttons state
     crossDissolve: null,      // null or { nextSectionIndex, progress }
-    ui: HIDDEN_UI,
+    categoryProgress: 0, menuProgress: 0, entranceProgress: 0,
   };
 }
 
@@ -105,31 +100,51 @@ export function getScrollState(scrollY, layout) {
     // Title: emerges from screen centre, rises, and decelerates to rest at its
     // pinned position together with the video (cubic, zero velocity at e=1).
     const k = 1 - e;
-    const titleEnterY = (sec.titleRiseD || 0.3 * vh) * k * k * k;
-
-    // Menu content: velocity ramps 0 → 1 px/px (v = 1-(1-e)²) so at e=1 it
-    // matches the 1:1 hold scroll exactly — the video's lost speed is handed
-    // to the menu, one integrated motion.
-        // Menu content: gentle 15vh lift during the ease phase, avoiding the massive 140vh scroll-tied sweep
-    const contentEnterY = (0.15 * vh) * k * k;
+        const categoryProgress = smoothstep(0, 0.45, e);
+    const menuProgress = smoothstep(0.35, 0.85, e);
 
     state.segment = 'A';
     state.videoProgress = p;
     state.frameIndex = frameOf(p, frameCount);
     state.segmentProgress = clamp01(s / sec.A_length);
-    state.entranceProgress = e;
-    // Allow tapping once the menu is substantially visible (≥85%)
-    state.buttonsActive = e >= 0.85;
-    state.ui = {
-      compOpacity: 1,
-      titleOpacity: smoothstep(0, 0.45, e),
-      titleEnterY,
-      titleExitY: 0,
-      contentOpacity: smoothstep(0.35, 0.85, e),
-      contentEnterY,
-      contentScrollY: 0,
-      scrim: smoothstep(0, 0.6, e),
-    };
+    state.categoryProgress = categoryProgress;
+    state.menuProgress = menuProgress;
+    state.entranceProgress = Math.max(categoryProgress, menuProgress);
+    return state;
+  } else if (s < sec.H_end) {
+    const held = s - sec.H_start;
+    state.segment = 'H';
+    state.videoProgress = holdP;
+    state.frameIndex = sec.holdFrame;
+    state.segmentProgress = clamp01(held / sec.H_length);
+    state.holdMenuScroll = held;
+    state.buttonsActive = true;
+    state.categoryProgress = 1;
+    state.menuProgress = 1;
+    state.entranceProgress = 1;
+    return state;
+  } else if (s < sec.X_end) {
+    const rawT = sec.X_length > 0 ? (s - sec.H_length) / sec.X_length : 0;
+    const t = Math.max(0, Math.min(1, rawT));
+    const resumeAt = CHOREOGRAPHY.exitVideoResumeAt;
+    
+    let p;
+    if (t < resumeAt) {
+      p = holdP;
+    } else {
+      const e = (t - resumeAt) / (1 - resumeAt);
+      p = holdP + (sec.p_at_exit_end - holdP) * e * e;
+    }
+
+    state.segment = 'X';
+    state.videoProgress = p;
+    state.frameIndex = frameOf(p, frameCount);
+    state.segmentProgress = t;
+    state.exitProgress = t;
+    state.holdMenuScroll = sec.H_length;
+    state.buttonsActive = t <= 0.2;
+    state.categoryProgress = 1 - t;
+    state.menuProgress = 1 - t;
     return state;
   }
 
@@ -248,5 +263,8 @@ export function getScrollState(scrollY, layout) {
   state.exitProgress = 1;
   return state;
 }
+
+
+
 
 

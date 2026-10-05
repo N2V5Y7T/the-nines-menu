@@ -1,4 +1,4 @@
-/**
+﻿/**
  * The Nines — DOM Menu Builder & State Updater
  * 
  * Generates the HTML for the menu, measures actual rendered heights,
@@ -197,7 +197,7 @@ export function buildMenuDOM(layout) {
       if (sec.note) html += `<p class="section-note">${sec.note}</p>`;
       html += `</div>`;
       
-      html += `<div class="menu-viewport"><div class="menu-content">`;
+      html += `<div class="menu-content">`;
       if (sec.subgroups) {
         sec.subgroups.forEach(sg => {
           html += `<div class="subgroup">`;
@@ -209,7 +209,7 @@ export function buildMenuDOM(layout) {
       } else if (sec.items) {
         html += `<div class="items-grid">${sec.items.map(renderItem).join('')}</div>`;
       }
-      html += `</div></div>`;
+      html += `</div>`;
       el.innerHTML = html;
     }
     
@@ -329,6 +329,8 @@ export function updateMenuState(state, layout, vh) {
     scrim.style.opacity = state.ui.scrim;
   }
 }
+
+
 
 
 
