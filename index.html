@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -120,8 +120,8 @@
 
     /* Emergence animation logic */
     /* Starting down at 15vh (gentle rise) instead of 35vh prevents it from moving too fast */    .group-title, .sec-header {
-      text-align: center;
-      margin-bottom: 24px;transition: color 0.4s ease;
+        text-align: center;
+        margin-bottom: -24px;transition: color 0.4s ease;
     }
     .menu-viewport {
       position: relative;
@@ -616,6 +616,7 @@
       -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 12px, black 48px, black 100%);
     }
     .menu-content {
+        padding-top: 48px;
         transform: none !important;
         transition: opacity 0.15s ease;
       }
@@ -842,6 +843,7 @@
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
+
 
 
 

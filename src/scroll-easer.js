@@ -27,10 +27,8 @@ export class ScrollEaser {
   }
 
   tick(realScrollY, isInFoodIntro = false) {
-    // If the user has prefers-reduced-motion, bypass completely.
-    // NOTE: We no longer bypass completely on touch devices because we want the 
-    // controlled momentum in the food intro.
-    if (this._reduced) {
+    // If the user has prefers-reduced-motion, or is on a touch device (where native scroll is already smooth), bypass completely.
+    if (this._reduced || this._isTouchDevice) {
       this._display = realScrollY;
       return realScrollY;
     }
@@ -61,4 +59,6 @@ export class ScrollEaser {
     this._display = scrollY;
   }
 }
+
+
 
