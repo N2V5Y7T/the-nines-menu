@@ -34,7 +34,7 @@
       top: 0;
       left: 0;
       width: 100%;
-      height: 100dvh; /* fallback */
+      height: 100vh;
       height: 100dvh;
       z-index: 0;
       overflow: hidden;
@@ -69,6 +69,7 @@
       display: block;
       width: 100%;
       height: 100%;
+      object-fit: cover;
     }
 
     /* ── Scroll container (drives all animations) ── */
@@ -85,7 +86,7 @@
       top: 0;
       left: 0;
       width: 100%;
-      height: 100dvh;
+      height: 100vh;
       height: 100dvh;
       z-index: 10;
       pointer-events: none;
@@ -517,22 +518,15 @@
 
     /* ── Desktop / wide viewport: center the 9:16 frame ── */
     /* Any viewport wider than a 9:16 portrait phone */
-    @media (min-aspect-ratio: 9/16) {
+        @media (min-aspect-ratio: 9/16) {
       /* Canvas + nav constrained to 9:16 column */
       #canvas-viewport,
-      #top-nav {
+      #top-nav,
+      #menu-layer {
         left: 50% !important;
         transform: translateX(-50%) !important;
-        width: calc(100dvh * 9 / 16) !important;
-        width: calc(100dvh * 9 / 16) !important;
-      }
-
-      /* Menu layer also constrains to the video column */
-      #menu-layer {
-        left: 50%;
-        transform: translateX(-50%);
-        width: calc(100dvh * 9 / 16);
-        width: calc(100dvh * 9 / 16);
+        width: 100vw !important;
+        max-width: calc(100vh * 9 / 16) !important;
       }
 
       /* Dark side bars with blurred first-frame background (see JS for dynamic bg-image) */
@@ -541,8 +535,7 @@
         content: '';
         position: fixed;
         top: 0; bottom: 0;
-        width: calc((100vw - (100dvh * 9 / 16)) / 2);
-        width: calc((100vw - (100dvh * 9 / 16)) / 2);
+        width: calc(50vw - (100vh * 9 / 32));
         background: #0a0a0a;
         z-index: -1;
       }
@@ -550,8 +543,6 @@
       body::after  { right: 0; }
     }
 
-    /* ── Landscape phone: allow wider content column ── */
-    /* e.g. iPhone in landscape — viewport is ~16:9, but still a phone */
     @media (orientation: landscape) and (max-height: 500px) {
       /* Relax the 9:16 cap — use the full width so the video fills properly */
       #canvas-viewport,
@@ -840,6 +831,9 @@
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
+
+
+
 
 
 
