@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The Nines � My List Manager
  */
 
