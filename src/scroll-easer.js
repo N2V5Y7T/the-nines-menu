@@ -26,8 +26,11 @@ export class ScrollEaser {
       .addEventListener('change', e => { this._reduced = e.matches; });
   }
 
-  tick(realScrollY) {
-    if (this._reduced || this._isTouchDevice) { // Bypass completely for native mobile feel
+  tick(realScrollY, isInFoodIntro = false) {
+    // If the user has prefers-reduced-motion, bypass completely.
+    // NOTE: We no longer bypass completely on touch devices because we want the 
+    // controlled momentum in the food intro.
+    if (this._reduced) {
       this._display = realScrollY;
       return realScrollY;
     }
@@ -35,11 +38,15 @@ export class ScrollEaser {
     const delta = realScrollY - this._display;
 
     // Smart Easing:
-    // If the user's finger is on the screen or actively spinning the wheel,
-    // use a high ease (0.6) so it stops instantly and changes direction instantly.
-    // If they let go and the page is natively coasting, drop the ease to (0.05)
-    // to give it a beautiful, floaty "rolling ball" momentum that trails off gently.
-    const currentEase = this._isInteracting ? 0.6 : 0.05;
+    // When interacting, use a tight ease (0.6) so it's responsive.
+    // If coasting (not interacting):
+    // - In Food Intro: use floaty "rolling ball" ease (0.05).
+    // - Outside Food Intro: use normal tight ease (0.6) so menus scroll normally.
+    let currentEase = 0.6; 
+    
+    if (isInFoodIntro && !this._isInteracting) {
+       currentEase = 0.05;
+    }
 
     if (Math.abs(delta) < SNAP_THRESHOLD) {
       this._display = realScrollY;

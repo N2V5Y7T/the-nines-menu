@@ -197,7 +197,7 @@ export function buildMenuDOM(layout) {
       if (sec.note) html += `<p class="section-note">${sec.note}</p>`;
       html += `</div>`;
       
-      html += `<div class="menu-content">`;
+      html += `<div class="menu-viewport"><div class="menu-content">`;
       if (sec.subgroups) {
         sec.subgroups.forEach(sg => {
           html += `<div class="subgroup">`;
@@ -209,7 +209,7 @@ export function buildMenuDOM(layout) {
       } else if (sec.items) {
         html += `<div class="items-grid">${sec.items.map(renderItem).join('')}</div>`;
       }
-      html += `</div>`;
+      html += `</div></div>`;
       el.innerHTML = html;
     }
     
@@ -224,13 +224,20 @@ export function buildMenuDOM(layout) {
     const btn = e.target.closest('.add-btn');
     if (!btn) return;
     const id = btn.getAttribute('data-id');
-    const hasOptions = btn.getAttribute('data-has-options') === 'true';
+                const hasOptions = btn.getAttribute('data-has-options') === 'true';
 
-    if (hasOptions) {
+      let isMinus = false;
+      if (btn.classList.contains('added')) {
+        const rect = btn.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        isMinus = clickX < (rect.width / 2);
+      }
+
+      if (hasOptions) {
       showOptionPicker(id, btn);
-    } else {
-      toggleItem(id, btn);
-    }
+          } else {
+        toggleItem(id, btn, isMinus ? -1 : 1);
+      }
   });
 }
 
@@ -261,9 +268,6 @@ export function measureMenuHeights(layout, vh) {
   });
 }
 
-/**
- * Syncs the DOM elements to the current scroll state.
- */
 export function updateMenuState(state, layout, vh) {
   const activeSec = state.section;
   
@@ -273,8 +277,7 @@ export function updateMenuState(state, layout, vh) {
     
     const isActive = sec.key === activeSec.key;
     
-    // We do NOT want to show the next section's menu during the cross-dissolve (J segment).
-    // The spec explicitly says: "no menu visible during the crossfade."
+    // Hide inactive sections
     if (!isActive) {
       el.style.display = 'none';
       return;
@@ -282,39 +285,9 @@ export function updateMenuState(state, layout, vh) {
     
     el.style.display = 'block';
     
-    let opacity = 0;
-    let y = 0;
+    const ui = state.ui;
     
-    if (state.segment === 'A') {
-      el.style.setProperty('--cat-prog', state.categoryProgress);
-      el.style.setProperty('--menu-prog', state.menuProgress);
-      opacity = state.entranceProgress;
-      y = 0; 
-    } 
-    else if (state.segment === 'H') {
-      el.style.setProperty('--cat-prog', 1);
-      el.style.setProperty('--menu-prog', 1);
-      opacity = 1;
-      // Group intros don't scroll during hold, they just freeze
-      y = sec.type === 'group-intro' ? 0 : -state.holdMenuScroll;
-    }
-    else if (state.segment === 'X') {
-      el.style.setProperty('--cat-prog', state.categoryProgress); 
-      el.style.setProperty('--menu-prog', state.menuProgress);
-      opacity = 1 - state.exitProgress;
-      
-      const baseScroll = sec.type === 'group-intro' ? 0 : -sec.H_length;
-      // Lift up during exit
-      y = baseScroll - (state.exitProgress * vh * 0.2); 
-    }
-    else if (state.segment === 'C') {
-      opacity = 0;
-    }
-    else if (state.segment === 'J') {
-      opacity = 0;
-    }
-    
-    el.style.opacity = opacity;
+    el.style.opacity = ui.compOpacity;
     
     // Manage interaction state (spec: buttons ONLY active during Hold)
     if (state.buttonsActive && isActive) {
@@ -325,22 +298,40 @@ export function updateMenuState(state, layout, vh) {
       el.setAttribute('inert', '');
     }
 
-    // CRITICAL: Must preserve the -50% horizontal translation from CSS!
+    // Apply exact UI transforms computed in scroll-map
+    // Title/header
+    const header = el.querySelector('.group-title, .sec-header');
+    if (header) {
+      header.style.opacity = ui.titleOpacity;
+      // Title Y combines enter offset and exit lift
+      header.style.transform = `translateY(${ui.titleEnterY + ui.titleExitY}px)`;
+    }
+    
+    // Menu content
+    const content = el.querySelector('.menu-content');
+    if (content) {
+      content.style.opacity = ui.contentOpacity;
+      // Content Y combines enter offset, normal scroll, and exit lift
+      content.style.transform = `translateY(${ui.contentEnterY + ui.contentScrollY + ui.titleExitY}px)`;
+    }
+
+    // Centering wrapper
     if (sec.type === 'group-intro') {
-      el.style.transform = `translate(-50%, calc(-50% + ${y}px))`;
+      el.style.transform = `translate(-50%, -50%)`;
     } else {
-      el.style.transform = `translateX(-50%) translateY(${y}px)`;
+      el.style.transform = `translateX(-50%)`;
     }
   });
 
-  // Cinematic Scrim (Phase 7 Fix): 
-  // Darken the video seamlessly in sync with menu entrance/exit so text is perfectly legible
+  // Cinematic Scrim: driven purely by state.ui.scrim
   const scrim = document.getElementById('video-scrim');
   if (scrim) {
-    let scrimOpacity = 0;
-    if (state.segment === 'A') scrimOpacity = state.entranceProgress;
-    else if (state.segment === 'H') scrimOpacity = 1;
-    else if (state.segment === 'X') scrimOpacity = 1 - state.exitProgress;
-    scrim.style.opacity = scrimOpacity;
+    scrim.style.opacity = state.ui.scrim;
   }
 }
+
+
+
+
+
+

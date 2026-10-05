@@ -61,10 +61,10 @@ export class Renderer {
     if (crossDissolve) {
       // ── Cross-dissolve between two sections ──
       this._renderCrossDissolve(
-        key, frameIndex,
-        crossDissolve.nextSection.key, 0,
-        crossDissolve.progress
-      );
+  section, frameIndex,
+  crossDissolve.nextSection, 0,
+  crossDissolve.progress
+);
     } else {
       // ── Single frame (pass section for blur-up placeholder) ──
       this._renderFrame(key, frameIndex, section);
@@ -101,11 +101,8 @@ export class Renderer {
    * Cached as an Image per section key.
    */
   _drawPlaceholder(section) {
-    if (!section) {
-      this.ctx.fillStyle = '#0a0a0a';
-      this.ctx.fillRect(0, 0, this._displayWidth, this._displayHeight);
-      return;
-    }
+    if (!section) return;
+    
     const key = section.key;
     if (!this._placeholders) this._placeholders = new Map();
 
@@ -113,10 +110,14 @@ export class Renderer {
     if (!ph) {
       ph = { state: 'loading', img: null };
       this._placeholders.set(key, ph);
-      // Load the placeholder — it's the first frame (frame0001.webp) since that's guaranteed small
+      
       const img = new Image();
       img.onload = () => { ph.img = img; ph.state = 'loaded'; this._lastDrawnFrame = -1; };
-      img.src = `${section.framePath}frame0001.webp`;
+      if (section.placeholderBytes) {
+        img.src = 'data:image/webp;base64,' + section.placeholderBytes;
+      } else {
+        img.src = `${section.framePath}frame0001.webp`;
+      }
     }
 
     if (ph.state === 'loaded' && ph.img) {
@@ -124,10 +125,6 @@ export class Renderer {
       this.ctx.filter = 'blur(12px)';
       this._drawImageCover(ph.img);
       this.ctx.filter = 'none';
-    } else {
-      // Placeholder not yet ready — show a solid dark background
-      this.ctx.fillStyle = '#0a0a0a';
-      this.ctx.fillRect(0, 0, this._displayWidth, this._displayHeight);
     }
   }
 
@@ -140,23 +137,26 @@ export class Renderer {
    * @param {number} frameB - next frame index
    * @param {number} progress - 0 = all A, 1 = all B
    */
-  _renderCrossDissolve(keyA, frameA, keyB, frameB, progress) {
+  _renderCrossDissolve(secA, frameA, secB, frameB, progress) {
+    const keyA = secA.key;
+    const keyB = secB.key;
     const imgA = this.frameCache.nearestFrame(keyA, frameA);
     const imgB = this.frameCache.nearestFrame(keyB, frameB);
 
-    // Draw A at full opacity
+    this.ctx.globalAlpha = 1;
     if (imgA) {
-      this.ctx.globalAlpha = 1;
       this._drawImageCover(imgA);
     } else {
-      this.ctx.fillStyle = '#000';
-      this.ctx.fillRect(0, 0, this._displayWidth, this._displayHeight);
+      this._drawPlaceholder(secA);
     }
 
-    // Draw B on top with dissolve opacity
-    if (imgB && progress > 0) {
+    if (progress > 0) {
       this.ctx.globalAlpha = progress;
-      this._drawImageCover(imgB);
+      if (imgB) {
+        this._drawImageCover(imgB);
+      } else {
+        this._drawPlaceholder(secB);
+      }
       this.ctx.globalAlpha = 1;
     }
 
@@ -195,3 +195,5 @@ export class Renderer {
     this.ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
   }
 }
+
+

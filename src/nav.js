@@ -55,14 +55,34 @@ export function initNav(layout, loader, easer) {
       if (!isNaN(targetScroll)) {
         // Phase 5: abort stale loads and prioritise destination
         if (loader) loader.jumpTo(destIdx);
-        // Phase 6: snap easer so display doesn't lag from the old position
-        if (easer) easer.snap(targetScroll);
-        window.scrollTo({
-          top: targetScroll,
-          behavior: 'smooth'
-        });
+        
+        const startScroll = window.scrollY;
+        const distance = targetScroll - startScroll;
+        const duration = 1200; // 1.2 sec (A4 - real animated tween)
+        const startTime = performance.now();
+        
+        function step(currentTime) {
+          const elapsed = currentTime - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          
+          // easeInOutCubic for smooth fast travel
+          const ease = progress < 0.5 
+            ? 4 * progress * progress * progress 
+            : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+            
+          window.scrollTo(0, startScroll + distance * ease);
+          
+          if (progress < 1) {
+            requestAnimationFrame(step);
+          } else {
+             window.scrollTo(0, targetScroll);
+          }
+        }
+        
+        requestAnimationFrame(step);
         closeDrawer();
       }
     }
   });
 }
+

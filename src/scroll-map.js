@@ -3,39 +3,60 @@
  * 
  * Pure function: given absolute scroll position → section state.
  * All animation state is derived from this — no timers, fully reversible.
+ *
+ * Round 2 (A2/B4): the video frame index AND every UI transform (title,
+ * menu content, scrim, composition opacity) are computed here from the SAME
+ * per-segment progress value. menu.js only applies `state.ui` — it computes
+ * nothing of its own — so video and UI move in lockstep by construction.
+ *
+ * Velocity is continuous (C1) across every boundary:
+ *   A(linear) → A(ease): cubic ease-out starts at the linear slope
+ *   A → H: video velocity → 0 while menu content velocity → 1 px/px (H is 1:1)
+ *          title velocity → 0 (title is pinned during H — Round 2, B1)
+ *   H → X: content keeps 1 px/px; title ramps 0 → 1 px/px; video ramps from 0
+ *   X → C: video ease-in ends exactly at the linear scrub slope
  */
 
 import { CHOREOGRAPHY } from './config.js';
 
-/**
- * Smooth ease-out: decelerates as t → 1
- */
-function easeOut(t) {
-  return 1 - (1 - t) * (1 - t);
+const clamp01 = (t) => Math.max(0, Math.min(1, t));
+
+/** Hermite smoothstep between edges a and b. */
+function smoothstep(a, b, x) {
+  const t = clamp01((x - a) / (b - a));
+  return t * t * (3 - 2 * t);
 }
 
-/**
- * Smooth ease-in: accelerates from t = 0
- */
-function easeIn(t) {
-  return t * t;
+// Fraction of the exit over which the pinned title accelerates up to the
+// content's 1 px/px lift speed (C1 ramp, so the title never jerks).
+const TITLE_LIFT_RAMP = 0.3;
+
+const HIDDEN_UI = Object.freeze({
+  compOpacity: 0,
+  titleOpacity: 0, titleEnterY: 0, titleExitY: 0,
+  contentOpacity: 0, contentEnterY: 0, contentScrollY: 0,
+  scrim: 0,
+});
+
+function baseState(sec, idx) {
+  return {
+    sectionIndex: idx,
+    section: sec,
+    segment: 'C',
+    videoProgress: 0,
+    frameIndex: 0,
+    segmentProgress: 0,
+    entranceProgress: 0,      // 0 = not started, 1 = fully entered (debug HUD)
+    exitProgress: 0,          // 0 = not started, 1 = fully exited (debug HUD)
+    holdMenuScroll: 0,        // px scrolled within hold (for menu content)
+    buttonsActive: false,     // "+" buttons state
+    crossDissolve: null,      // null or { nextSectionIndex, progress }
+    ui: HIDDEN_UI,
+  };
 }
 
-/**
- * Apply easing near segment boundaries for smooth video speed transitions.
- * Eases the last `zone` fraction of the input with ease-out,
- * and the first `zone` fraction with ease-in.
- */
-function easeVideoProgress(t, applyEaseOut, applyEaseIn, zone = 0.15) {
-  if (applyEaseOut && t > 1 - zone) {
-    const local = (t - (1 - zone)) / zone;  // 0..1 in the zone
-    return (1 - zone) + zone * easeOut(local);
-  }
-  if (applyEaseIn && t < zone) {
-    const local = t / zone;
-    return zone * easeIn(local);
-  }
-  return t;
+function frameOf(p, frameCount) {
+  return Math.max(0, Math.min(frameCount - 1, Math.round(p * (frameCount - 1))));
 }
 
 /**
@@ -46,216 +67,185 @@ function easeVideoProgress(t, applyEaseOut, applyEaseIn, zone = 0.15) {
  * @returns {object} state object
  */
 export function getScrollState(scrollY, layout) {
-  // Default state (before first section)
-  const defaultState = {
-    sectionIndex: 0,
-    section: layout[0],
-    segment: 'A',
-    videoProgress: 0,
-    frameIndex: 0,
-    segmentProgress: 0,
-    entranceProgress: 0,      // 0 = not started, 1 = fully entered
-    categoryProgress: 0,      // 0 = hidden, 1 = fully visible/positioned
-    menuProgress: 0,          // 0 = hidden, 1 = fully visible
-    exitProgress: 0,          // 0 = not started, 1 = fully exited
-    holdMenuScroll: 0,        // px scrolled within hold (for menu content)
-    buttonsActive: false,     // "+" buttons state
-    crossDissolve: null,      // null or { nextSectionIndex, progress }
-  };
-
-  if (!layout.length) return defaultState;
+  if (!layout.length) return baseState(undefined, 0);
 
   // Clamp scroll
   const totalScroll = layout[layout.length - 1].scrollEnd;
   scrollY = Math.max(0, Math.min(scrollY, totalScroll));
 
   // Find active section
-  let sec = layout[0];
+  let sec = layout[layout.length - 1];
   for (let i = 0; i < layout.length; i++) {
     if (scrollY >= layout[i].scrollStart && scrollY < layout[i].scrollEnd) {
       sec = layout[i];
       break;
     }
-    // If past all sections, use last
-    if (i === layout.length - 1) {
-      sec = layout[i];
-    }
   }
 
   const idx = sec.index;
-  const { holdP, frameCount, scrubLengthVh } = sec;
-  const scrubPx = scrubLengthVh * (sec.A_length / holdP); // recover vh*px conversion
+  const { holdP, frameCount, vh } = sec;
+  const state = baseState(sec, idx);
 
   // ── Segment A: Scrub + Entrance ──────────────────────────────
   if (scrollY < sec.A_end) {
-    const rawT = sec.A_length > 0 ? (scrollY - sec.A_start) / sec.A_length : 0;
-    const t = Math.max(0, Math.min(1, rawT));
-
-    // Ease-out near hold (video decelerates into freeze)
-    const easedT = easeVideoProgress(t, true, false);
-    const p = easedT * holdP;
-
-    // Entrance progress (category + menu appear during A)
-    // Category: starts at categoryStart, ends rise at categoryRiseEnd (in video progress)
-    const catStart = CHOREOGRAPHY.categoryStart;
-    const catEnd = CHOREOGRAPHY.categoryRiseEnd;
-    const menuStart = CHOREOGRAPHY.menuStart;
-    const holdAt = CHOREOGRAPHY.holdAt;
-
-    const categoryProgress = p < catStart ? 0 :
-      p >= catEnd ? 1 :
-      (p - catStart) / (catEnd - catStart);
-
-    const menuProgress = p < menuStart ? 0 :
-      p >= holdAt ? 1 :
-      (p - menuStart) / (holdAt - menuStart);
-
-    const entranceProgress = Math.max(categoryProgress, menuProgress);
-
-    return {
-      sectionIndex: idx,
-      section: sec,
-      segment: 'A',
-      videoProgress: p,
-      frameIndex: Math.round(p * (frameCount - 1)),
-      segmentProgress: t,
-      entranceProgress,
-      categoryProgress,
-      menuProgress,
-      exitProgress: 0,
-      holdMenuScroll: 0,
-      // Allow tapping once the menu is substantially visible (≥85%) —
-      // so user doesn't have to scroll micro-adjust to enter Segment H
-      buttonsActive: menuProgress >= 0.85,
-      crossDissolve: null,
-    };
-  }
-
-  // ── Segment H: Hold (video frozen, menu scrollable) ──────────
-  if (scrollY < sec.H_end) {
-    const t = sec.H_length > 0 ? (scrollY - sec.H_start) / sec.H_length : 0;
-
-    return {
-      sectionIndex: idx,
-      section: sec,
-      segment: 'H',
-      videoProgress: holdP,
-      frameIndex: sec.holdFrame,
-      segmentProgress: Math.max(0, Math.min(1, t)),
-      entranceProgress: 1,
-      categoryProgress: 1,
-      menuProgress: 1,
-      exitProgress: 0,
-      holdMenuScroll: scrollY - sec.H_start,
-      buttonsActive: true,  // "+" buttons ONLY active during HOLD
-      crossDissolve: null,
-    };
-  }
-
-  // ── Segment X: Exit (menu lifts, video resumes) ──────────────
-  if (scrollY < sec.X_end) {
-    const rawT = sec.X_length > 0 ? (scrollY - sec.X_start) / sec.X_length : 0;
-    const t = Math.max(0, Math.min(1, rawT));
-
-    const resumeAt = CHOREOGRAPHY.exitVideoResumeAt;
-    let p;
-    if (t < resumeAt) {
-      // Video still frozen
-      p = holdP;
+    const s = scrollY - sec.A_start;
+    let p, e;
+    if (s < sec.A_linLength) {
+      // Linear scrub — no UI yet (choreography §4: 0 → 0.40 nothing on screen)
+      p = s / sec.scrubPx;
+      e = 0;
     } else {
-      // Video resumes: ease-in from zero speed
-      const resumeT = (t - resumeAt) / (1 - resumeAt);
-      const easedResumeT = easeVideoProgress(resumeT, false, true);
-      p = holdP + easedResumeT * sec.p_covered_in_X;
+      // One continuous cubic ease-out across the whole emergence window.
+      // d p/d s at e=0 equals the linear slope → no rate step.
+      e = clamp01((s - sec.A_linLength) / sec.A_easeLength);
+      const k = 1 - e;
+      p = sec.p_ease_start + (holdP - sec.p_ease_start) * (1 - k * k * k);
     }
 
-    // Exit progress: menu lifts upward and fades
-    const exitProgress = t;
+    // Title: emerges from screen centre, rises, and decelerates to rest at its
+    // pinned position together with the video (cubic, zero velocity at e=1).
+    const k = 1 - e;
+    const titleEnterY = (sec.titleRiseD || 0.3 * vh) * k * k * k;
 
-    return {
-      sectionIndex: idx,
-      section: sec,
-      segment: 'X',
-      videoProgress: p,
-      frameIndex: Math.round(p * (frameCount - 1)),
-      segmentProgress: t,
-      entranceProgress: 1,
-      categoryProgress: 1, // Stay at 1 so CSS transform doesn't push it down
-      menuProgress: 1,     // Stay at 1
-      exitProgress,
-      holdMenuScroll: sec.H_length,
-      // Keep tappable while menu is still largely on screen (first 20% of exit)
-      buttonsActive: t <= 0.2,
-      crossDissolve: null,
+    // Menu content: velocity ramps 0 → 1 px/px (v = 1-(1-e)²) so at e=1 it
+    // matches the 1:1 hold scroll exactly — the video's lost speed is handed
+    // to the menu, one integrated motion.
+    const L = sec.A_easeLength;
+    const travelled = L * (e - (1 - k * k * k) / 3);
+    const contentEnterY = L * (2 / 3) - travelled;
+
+    state.segment = 'A';
+    state.videoProgress = p;
+    state.frameIndex = frameOf(p, frameCount);
+    state.segmentProgress = clamp01(s / sec.A_length);
+    state.entranceProgress = e;
+    // Allow tapping once the menu is substantially visible (≥85%)
+    state.buttonsActive = e >= 0.85;
+    state.ui = {
+      compOpacity: 1,
+      titleOpacity: smoothstep(0, 0.45, e),
+      titleEnterY,
+      titleExitY: 0,
+      contentOpacity: smoothstep(0.35, 0.85, e),
+      contentEnterY,
+      contentScrollY: 0,
+      scrim: smoothstep(0, 0.6, e),
     };
+    return state;
+  }
+
+  // ── Segment H: Hold (video frozen, menu scrolls 1:1, title pinned) ──
+  if (scrollY < sec.H_end) {
+    const held = scrollY - sec.H_start;
+    state.segment = 'H';
+    state.videoProgress = holdP;
+    state.frameIndex = frameOf(holdP, frameCount);
+    state.segmentProgress = sec.H_length > 0 ? clamp01(held / sec.H_length) : 0;
+    state.entranceProgress = 1;
+    state.holdMenuScroll = held;
+    state.buttonsActive = true;  // "+" buttons active during HOLD
+    state.ui = {
+      compOpacity: 1,
+      titleOpacity: 1, titleEnterY: 0, titleExitY: 0,
+      contentOpacity: 1, contentEnterY: 0, contentScrollY: -held,
+      scrim: 1,
+    };
+    return state;
+  }
+
+  // ── Segment X: Exit (title + menu lift together, video resumes) ──
+  if (scrollY < sec.X_end) {
+    const s = scrollY - sec.X_start;
+    const t = sec.X_length > 0 ? clamp01(s / sec.X_length) : 1;
+
+    const resumeAt = CHOREOGRAPHY.exitVideoResumeAt;
+    let p = holdP;
+    if (t > resumeAt) {
+      // Quadratic ease-in from zero speed, ending at the linear scrub slope
+      const u = (t - resumeAt) / (1 - resumeAt);
+      p = holdP + sec.p_covered_in_X * u * u;
+    }
+
+    // Title accelerates from pinned (0 px/px) to the content's 1 px/px lift
+    const X = sec.X_length;
+    const r = TITLE_LIFT_RAMP;
+    const titleLift = t < r
+      ? X * (t * t) / (2 * r)
+      : X * (r / 2 + (t - r));
+
+    state.segment = 'X';
+    state.videoProgress = p;
+    state.frameIndex = frameOf(p, frameCount);
+    state.segmentProgress = t;
+    state.entranceProgress = 1;
+    state.exitProgress = t;
+    state.holdMenuScroll = sec.H_length;
+    // Keep tappable while menu is still largely on screen (first 20% of exit)
+    state.buttonsActive = t <= 0.2;
+    state.ui = {
+      compOpacity: 1 - t,
+      titleOpacity: 1, titleEnterY: 0, titleExitY: -titleLift,
+      contentOpacity: 1, contentEnterY: 0, contentScrollY: -(sec.H_length + s),
+      scrim: 1 - t,
+    };
+    return state;
   }
 
   // ── Segment C: Continuation (video plays to end) ─────────────
   if (scrollY < sec.C_end) {
-    const rawT = sec.C_length > 0 ? (scrollY - sec.C_start) / sec.C_length : 0;
-    const t = Math.max(0, Math.min(1, rawT));
+    const t = sec.C_length > 0 ? clamp01((scrollY - sec.C_start) / sec.C_length) : 1;
+    const p = Math.min(1, sec.p_at_exit_end + t * (1.0 - sec.p_at_exit_end));
 
-    const p = sec.p_at_exit_end + t * (1.0 - sec.p_at_exit_end);
+    state.segment = 'C';
+    state.videoProgress = p;
+    state.frameIndex = frameOf(p, frameCount);
+    state.segmentProgress = t;
+    state.exitProgress = 1;
 
-    return {
-      sectionIndex: idx,
-      section: sec,
-      segment: 'C',
-      videoProgress: Math.min(1, p),
-      frameIndex: Math.min(frameCount - 1, Math.round(p * (frameCount - 1))),
-      segmentProgress: t,
-      entranceProgress: 0,
-      categoryProgress: 0,
-      menuProgress: 0,
-      exitProgress: 1,
-      holdMenuScroll: 0,
-      buttonsActive: false,
-      crossDissolve: null,
-    };
+    if (sec.continuous) {
+      // Food intro (Round 2, B2): video never pauses. The group title floats
+      // in and out on top of the moving video, driven purely by p.
+      const fadeIn = smoothstep(0.28, 0.42, p);
+      const fadeOut = smoothstep(0.62, 0.80, p);
+      const opacity = fadeIn * (1 - fadeOut);
+      state.entranceProgress = fadeIn;
+      state.exitProgress = fadeOut;
+      state.ui = {
+        compOpacity: 1,
+        titleOpacity: opacity,
+        // gentle constant upward drift, plus an extra lift while fading out
+        titleEnterY: (0.5 - p) * 0.35 * vh,
+        titleExitY: -fadeOut * 0.12 * vh,
+        contentOpacity: 0, contentEnterY: 0, contentScrollY: 0,
+        scrim: opacity * 0.6,
+      };
+    }
+    return state;
   }
 
   // ── Segment J: Handoff (cross-dissolve to next section) ──────
   if (scrollY < sec.J_end) {
-    const rawT = sec.J_length > 0 ? (scrollY - sec.J_start) / sec.J_length : 0;
-    const t = Math.max(0, Math.min(1, rawT));
-
+    const t = sec.J_length > 0 ? clamp01((scrollY - sec.J_start) / sec.J_length) : 1;
     const nextIdx = Math.min(idx + 1, layout.length - 1);
 
-    return {
-      sectionIndex: idx,
-      section: sec,
-      segment: 'J',
-      videoProgress: 1.0,
-      frameIndex: frameCount - 1,
-      segmentProgress: t,
-      entranceProgress: 0,
-      categoryProgress: 0,
-      menuProgress: 0,
-      exitProgress: 1,
-      holdMenuScroll: 0,
-      buttonsActive: false,
-      crossDissolve: {
-        nextSectionIndex: nextIdx,
-        nextSection: layout[nextIdx],
-        progress: t,  // 0 = all current, 1 = all next
-      },
+    state.segment = 'J';
+    state.videoProgress = 1.0;
+    state.frameIndex = frameCount - 1;
+    state.segmentProgress = t;
+    state.exitProgress = 1;
+    state.crossDissolve = {
+      nextSectionIndex: nextIdx,
+      nextSection: layout[nextIdx],
+      progress: t,  // 0 = all current, 1 = all next
     };
+    return state;
   }
 
   // Past end — show last frame of last section
-  return {
-    sectionIndex: idx,
-    section: sec,
-    segment: 'C',
-    videoProgress: 1.0,
-    frameIndex: frameCount - 1,
-    segmentProgress: 1,
-    entranceProgress: 0,
-    categoryProgress: 0,
-    menuProgress: 0,
-    exitProgress: 1,
-    holdMenuScroll: 0,
-    buttonsActive: false,
-    crossDissolve: null,
-  };
+  state.segment = 'C';
+  state.videoProgress = 1.0;
+  state.frameIndex = frameCount - 1;
+  state.segmentProgress = 1;
+  state.exitProgress = 1;
+  return state;
 }

@@ -34,8 +34,8 @@
       top: 0;
       left: 0;
       width: 100%;
-      height: 100vh; /* fallback */
-      height: 100vh;
+      height: 100dvh; /* fallback */
+      height: 100dvh;
       z-index: 0;
       overflow: hidden;
       
@@ -85,8 +85,8 @@
       top: 0;
       left: 0;
       width: 100%;
-      height: 100vh;
-      height: 100vh;
+      height: 100dvh;
+      height: 100dvh;
       z-index: 10;
       pointer-events: none;
       color: #fff;
@@ -99,7 +99,7 @@
     
     .menu-section {
       position: absolute;
-      top: 15vh; /* Menu starts scrolling from here */
+      top: 12vh; /* Tightened from 15vh (A6) */
       left: 50%;
       transform: translateX(-50%);
       width: 100%;
@@ -119,18 +119,19 @@
     }
 
     /* Emergence animation logic */
-    /* Starting down at 15vh (gentle rise) instead of 35vh prevents it from moving too fast */
-    .group-title, .sec-header {
-      opacity: var(--cat-prog, 1);
-      transform: translateY(calc((1 - var(--cat-prog, 1)) * 12vh));
+    /* Starting down at 15vh (gentle rise) instead of 35vh prevents it from moving too fast */    .group-title, .sec-header {
       text-align: center;
-      margin-bottom: 24px;
-      transition: color 0.4s ease;
+      margin-bottom: 24px;transition: color 0.4s ease;
+    }
+    .menu-viewport {
+      position: relative;
+      mask-image: linear-gradient(to bottom, transparent 0%, transparent 12px, black 48px, black 100%);
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 12px, black 48px, black 100%);
     }
     .menu-content {
-      opacity: var(--menu-prog, 1);
+
       /* Menu rises smoothly from just below */
-      transform: translateY(calc((1 - var(--menu-prog, 1)) * 8vh));
+
       transition: color 0.4s ease;
     }
 
@@ -525,16 +526,16 @@
       #top-nav {
         left: 50% !important;
         transform: translateX(-50%) !important;
-        width: calc(100vh * 9 / 16) !important;
-        width: calc(100vh * 9 / 16) !important;
+        width: calc(100dvh * 9 / 16) !important;
+        width: calc(100dvh * 9 / 16) !important;
       }
 
       /* Menu layer also constrains to the video column */
       #menu-layer {
         left: 50%;
         transform: translateX(-50%);
-        width: calc(100vh * 9 / 16);
-        width: calc(100vh * 9 / 16);
+        width: calc(100dvh * 9 / 16);
+        width: calc(100dvh * 9 / 16);
       }
 
       /* Dark side bars with blurred first-frame background (see JS for dynamic bg-image) */
@@ -543,7 +544,7 @@
         content: '';
         position: fixed;
         top: 0; bottom: 0;
-        width: calc((100vw - (100vh * 9 / 16)) / 2);
+        width: calc((100vw - (100dvh * 9 / 16)) / 2);
         width: calc((100vw - (100dvh * 9 / 16)) / 2);
         background: #0a0a0a;
         z-index: -1;
@@ -609,7 +610,12 @@
         transform: none !important;
         transition: opacity 0.15s ease;
       }
-      .menu-content {
+      .menu-viewport {
+      position: relative;
+      mask-image: linear-gradient(to bottom, transparent 0%, transparent 12px, black 48px, black 100%);
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 12px, black 48px, black 100%);
+    }
+    .menu-content {
         transform: none !important;
         transition: opacity 0.15s ease;
       }
@@ -709,7 +715,58 @@
       font-weight: 500;
       font-size: 15px;
     }
-  </style>
+        /* Stepper styling inside add-btn */
+      .add-btn.added {
+        width: 80px; /* Expand to fit minus, number, plus */
+        padding: 0 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.2);
+      }
+      .qty-btn {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-weight: 500;
+      }
+      .qty-val {
+        font-size: 14px;
+        font-weight: 500;
+        pointer-events: none;
+      }
+      .variant-qty-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px; height: 16px;
+        background: #fff; color: #000;
+        border-radius: 50%;
+        font-size: 10px; font-weight: bold;
+        margin-left: 6px;
+      }
+      .drawer-qty-stepper {
+        display: flex; align-items: center; gap: 8px;
+        background: #222;
+        border-radius: 12px;
+        padding: 2px 6px;
+      }
+      .drawer-qty-btn {
+        background: none; border: none;
+        color: #fff; font-size: 14px;
+        width: 20px; height: 20px;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer;
+      }
+      .drawer-qty-val {
+        font-family: 'Inter', sans-serif;
+        font-size: 13px; font-weight: 500;
+        min-width: 14px; text-align: center;
+      }
+</style>
 </head>
 <body>
 
@@ -738,9 +795,9 @@
     <button id="nav-list-btn" aria-label="My List">
       <!-- Cart / bag icon -->
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
-        <line x1="3" y1="6" x2="21" y2="6"/>
-        <path d="M16 10a4 4 0 01-8 0"/>
+        <circle cx="9" cy="21" r="1"></circle>
+        <circle cx="20" cy="21" r="1"></circle>
+        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
       </svg>
       <span id="list-count">0</span>
     </button>
@@ -785,6 +842,16 @@
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -97,6 +97,7 @@ async function init() {
   // Start scroll loop
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', onResize);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
   
   // Initial render
   onScroll();
@@ -115,7 +116,12 @@ function tick() {
   const realScrollY = window.scrollY;
 
   // Phase 6: ease the display position toward the real scroll for smooth wheel feel
-  const scrollY = easer ? easer.tick(realScrollY) : realScrollY;
+  // Food intro ends at layout[0].scrollEnd
+  const foodIntroEnd = layout.length > 0 ? layout[0].scrollEnd : 0;
+  const isInFoodIntro = realScrollY < foodIntroEnd;
+
+  // Phase 6: ease the display position toward the real scroll for smooth wheel feel
+  const scrollY = easer ? easer.tick(realScrollY, isInFoodIntro) : realScrollY;
 
   // Keep firing rAF while still easing (display hasn't caught up to real)
   const stillEasing = Math.abs(scrollY - realScrollY) > 0.5;
@@ -146,16 +152,13 @@ function tick() {
 
 // ── Resize handler ──────────────────────────────────────────────
 function onResize() {
-  if (window.innerWidth === viewportWidth) return; // Ignore mobile URL bar height shifts
   viewportWidth = window.innerWidth;
-  const vh = window.innerHeight;
-  const sections = layout.map(s => ({
-    ...s,
-    // Keep the original config data — recompute scroll layout
-  }));
-
-  // Recompute layout is expensive — debounce
-  // For now, just resize the renderer
+  const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  viewportHeight = vh;
+  
+  // Recompute layout smoothly
+  layout = computeScrollLayout(layout, vh);
+  
   renderer.resize();
   
   // Force redraw
@@ -167,5 +170,10 @@ function onResize() {
 init().catch(err => {
   console.error('[The Nines] Init failed:', err);
 });
+
+
+
+
+
 
 
