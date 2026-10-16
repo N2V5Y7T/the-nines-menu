@@ -99,7 +99,7 @@
     
     .menu-section {
       position: absolute;
-      top: 15vh; /* Menu starts scrolling from here */
+      top: max(84px, calc(env(safe-area-inset-top) + 64px)); /* Cleanly pinned just below top nav bar */
       left: 50%;
       transform: translateX(-50%);
       width: 100%;
@@ -119,14 +119,13 @@
     }
 
     /* Emergence animation logic */
-    /* Starting down at 15vh (gentle rise) instead of 35vh prevents it from moving too fast */
     .sec-header {
       opacity: var(--cat-prog, 1);
-      transform: translateY(calc((1 - var(--cat-prog, 1)) * 12vh));
+      transform: translateY(calc((1 - var(--cat-prog, 1)) * 6vh));
       text-align: center;
-      margin-bottom: 24px;
+      margin-bottom: 12px;
       transition: color 0.4s ease;
-      /* Category heading stays in foreground above scrolling items */
+      /* Category heading stays fixed in foreground above scrolling items */
       position: relative;
       z-index: 10;
       pointer-events: none;
@@ -134,19 +133,20 @@
     .menu-content {
       opacity: var(--menu-prog, 1);
       /* Menu rises smoothly from just below */
-      transform: translateY(calc((1 - var(--menu-prog, 1)) * 8vh));
+      transform: translateY(calc((1 - var(--menu-prog, 1)) * 4vh));
       transition: color 0.4s ease;
       position: relative;
       z-index: 1;
       will-change: transform, opacity;
-      /* Stationary mask: items fading out before reaching the category heading */
-      -webkit-mask-image: linear-gradient(to bottom, transparent 0px, transparent 8px, black 36px, black 100%);
-      mask-image: linear-gradient(to bottom, transparent 0px, transparent 8px, black 36px, black 100%);
+      /* Stationary mask: items fading out gracefully before reaching the category heading */
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0px, transparent 4px, black 28px, black 100%);
+      mask-image: linear-gradient(to bottom, transparent 0px, transparent 4px, black 28px, black 100%);
       -webkit-mask-repeat: no-repeat;
       mask-repeat: no-repeat;
     }
     .menu-scroll-track {
       will-change: transform;
+      padding-top: 32px; /* Breathing room below category header: first item sits in 100% opaque zone */
     }
 
 
@@ -187,6 +187,9 @@
 
     .subgroup {
       margin-top: 36px;
+    }
+    .subgroup:first-child {
+      margin-top: 0;
     }
     .subgroup-title {
       font-family: 'Playfair Display', serif;

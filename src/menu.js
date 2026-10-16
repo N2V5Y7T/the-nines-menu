@@ -272,9 +272,11 @@ export function measureMenuHeights(layout, vh) {
       
       const track = sec.domElement.querySelector('.menu-scroll-track');
       const h = track ? track.offsetHeight : sec.domElement.offsetHeight;
-      
-      // Available viewable space below header is ~60vh
-      const availableSpace = vh * 0.60; 
+      const content = sec.domElement.querySelector('.menu-content');
+      const contentTop = content ? content.getBoundingClientRect().top : 140;
+
+      // Available viewable space below header down to bottom buffer (80px for cart/order bar)
+      const availableSpace = Math.max(200, vh - contentTop - 80); 
       sec.measuredHeightPx = Math.max(0, h - availableSpace);
       
       sec.domElement.style.display = 'none';
@@ -322,6 +324,8 @@ export function updateMenuState(state, layout, vh) {
     let trackY = 0;
     let sectionY = 0;
 
+    const maxScroll = activeSec.measuredHeightPx !== undefined ? activeSec.measuredHeightPx : (activeSec.H_length || 0);
+
     if (state.segment === 'A') {
       el.style.setProperty('--cat-prog', state.categoryProgress);
       el.style.setProperty('--menu-prog', state.menuProgress);
@@ -333,15 +337,16 @@ export function updateMenuState(state, layout, vh) {
       el.style.setProperty('--cat-prog', 1);
       el.style.setProperty('--menu-prog', 1);
       opacity = 1;
-      trackY = -state.holdMenuScroll;
+      // Clamp scroll so track never overscrolls past the final item
+      trackY = -Math.min(state.holdMenuScroll, maxScroll);
       sectionY = 0;
     }
     else if (state.segment === 'X') {
       el.style.setProperty('--cat-prog', state.categoryProgress); 
       el.style.setProperty('--menu-prog', state.menuProgress);
       opacity = 1 - state.exitProgress;
-      trackY = -activeSec.H_length;
-      // Lift section gracefully during exit
+      trackY = -maxScroll;
+      // Lift entire section gracefully during exit together with the header
       sectionY = -state.exitProgress * vh * 0.25; 
     }
     else if (state.segment === 'C' || state.segment === 'J') {
