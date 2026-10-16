@@ -103,7 +103,17 @@ export class SmartLoader {
   _ensureLoaded(idx, priority) {
     if (idx < 0 || idx >= this._layout.length) return;
     const sec = this._layout[idx];
-    if (this._queued.has(sec.key)) return;
+    if (this._queued.has(sec.key)) {
+      // If it's already queued but now requested at 'high' priority, promote it!
+      if (priority === 'high') {
+        const state = this._cache._sections.get(sec.key);
+        if (state && state.priority !== 'high') {
+          state.priority = 'high';
+          this._cache.prioritizeWindow(sec.key, 0, 1);
+        }
+      }
+      return;
+    }
 
     this._queued.add(sec.key);
     this._cache.loadSection(sec.key, sec.framePath, sec.frameCount, priority);

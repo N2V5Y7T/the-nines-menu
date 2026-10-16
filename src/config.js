@@ -96,7 +96,7 @@ export async function buildSectionConfig() {
         frameCount: m.frameCount,
         holdFrame: sec.holdFrame ?? m.holdFrame,
         holdP,
-        scrubLengthVh: sec.scrubLengthVh || 140,
+        scrubLengthVh: 140, // Standardized across all regular sections: eliminates wild 100vh-700vh speed fluctuations
         estimatedMenuHeightPx: estimateMenuHeight(sec),
         hasMenu: true,
         items: sec.items || null,
@@ -181,9 +181,10 @@ export function computeScrollLayout(sections, vh) {
     const A_length = holdP * scrubPx;
 
     // Segment H: video frozen, menu scrolls
-    // For menus, enforce a comfortable minimum hold of 25vh so short menus don't vanish prematurely
+    // H_length matches the actual distance needed to scroll the dishes.
+    // If all items fit on screen (measuredHeightPx === 0), H_length is 0 so there is no dead frozen scroll!
     const H_length = sec.hasMenu 
-      ? (sec.measuredHeightPx !== undefined ? Math.max(sec.measuredHeightPx, 25 * vh / 100) : sec.estimatedMenuHeightPx) 
+      ? (sec.measuredHeightPx !== undefined ? sec.measuredHeightPx : sec.estimatedMenuHeightPx) 
       : 0;
 
     // Segment X: exit (exitLengthVh)

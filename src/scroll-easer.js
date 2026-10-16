@@ -25,13 +25,8 @@ export class ScrollEaser {
       return realScrollY;
     }
 
-    // Smooth, low-latency glide:
-    // Small gestures / trackpads track almost immediately (0.75)
-    // Stepped mouse wheels glide smoothly with zero lag or resistance (0.35)
-    const isSmallDelta = Math.abs(delta) < 25;
-    const ease = isSmallDelta ? 0.75 : 0.35;
-
-    this._display += delta * ease;
+    // Smooth, low-latency glide with continuous momentum (no stepped velocity jumps)
+    this._display += delta * 0.45;
     return this._display;
   }
 

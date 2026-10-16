@@ -110,7 +110,8 @@ export class Renderer {
       return;
     }
 
-    const imgFloor = this.frameCache.nearestFrame(sectionKey, floorIndex);
+    const imgFloorExact = this.frameCache.getFrame(sectionKey, floorIndex);
+    const imgFloor = imgFloorExact || this.frameCache.nearestFrame(sectionKey, floorIndex);
     if (!imgFloor) {
       if (this._lastValidImage) {
         this.ctx.globalAlpha = 1;
@@ -126,9 +127,9 @@ export class Renderer {
     this._drawImageCover(imgFloor);
     this._lastValidImage = imgFloor;
 
-    // Sub-frame blend: if position is fractional and next frame is available in cache,
-    // blend it seamlessly on top! Eliminates the stepped "one one frame is changing" artifact.
-    if (blendAlpha > 0.01 && ceilIndex !== floorIndex) {
+    // Sub-frame optical blend: only blend if imgFloor is the EXACT floor frame and ceil is available.
+    // Eliminates stepping popping without any ghosting artifacts.
+    if (imgFloorExact && blendAlpha > 0.01 && ceilIndex !== floorIndex) {
       const imgCeil = this.frameCache.getFrame(sectionKey, ceilIndex);
       if (imgCeil) {
         this.ctx.globalAlpha = blendAlpha;

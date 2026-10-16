@@ -352,8 +352,6 @@
           "label": "Bar",
           "video": "bar.mp4",
           "holdFrame": null,
-          "scrubLengthVh": 700,
-          "note": "Single checkpoint/video. 14 spirit categories render as sub-headers scrolling within one hold — see spec Section 4a.",
           "subgroups": [
             {
               "subHeader": "The Cocktail Studio",
