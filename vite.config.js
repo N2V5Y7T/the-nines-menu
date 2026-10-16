@@ -116,5 +116,11 @@ function seoPlugin() {
 
 export default defineConfig({
   base: './',
-  plugins: [seoPlugin()]
+  plugins: [seoPlugin()],
+  server: {
+    watch: {
+      ignored: ['**/scratch/**', '**/.git/**']
+    }
+  }
 });
+

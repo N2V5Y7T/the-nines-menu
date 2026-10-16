@@ -5,7 +5,7 @@
  * and syncs CSS transforms/opacities to the current scroll state.
  */
 
-import { registerItem, toggleItem, addVariant } from './list.js';
+import { registerItem, toggleItem, addVariant, incrementItem, decrementItem } from './list.js';
 
 /**
  * Shows a mobile bottom sheet letting the user pick one variant
@@ -219,17 +219,37 @@ export function buildMenuDOM(layout) {
     sec.domElement = el;
   });
 
-  // Global event delegation — show option picker or add directly
+  // Global event delegation — show option picker, add/increment, or adjust qty
   layer.addEventListener('click', (e) => {
+    // Handle inline − button inside a qty-active add-btn
+    const minusSpan = e.target.closest('.qty-minus');
+    if (minusSpan) {
+      e.stopPropagation();
+      const id = minusSpan.getAttribute('data-id');
+      decrementItem(id);
+      return;
+    }
+
+    // Handle inline + button inside a qty-active add-btn
+    const plusSpan = e.target.closest('.qty-plus');
+    if (plusSpan) {
+      e.stopPropagation();
+      const id = plusSpan.getAttribute('data-id');
+      incrementItem(id);
+      return;
+    }
+
+    // Handle the outer add-btn (only when NOT in qty-active state)
     const btn = e.target.closest('.add-btn');
-    if (!btn) return;
+    if (!btn || btn.classList.contains('qty-active')) return;
+
     const id = btn.getAttribute('data-id');
     const hasOptions = btn.getAttribute('data-has-options') === 'true';
 
     if (hasOptions) {
       showOptionPicker(id, btn);
     } else {
-      toggleItem(id, btn);
+      incrementItem(id);
     }
   });
 }
@@ -277,11 +297,33 @@ export function updateMenuState(state, layout, vh) {
     // The spec explicitly says: "no menu visible during the crossfade."
     if (!isActive) {
       el.style.display = 'none';
+      const mc = el.querySelector(':scope > .menu-content');
+      if (mc) {
+        mc.style.webkitMaskImage = '';
+        mc.style.maskImage = '';
+        mc.style.clipPath = '';
+      }
       return;
     }
     
     el.style.display = 'block';
     
+    if (sec.type === 'group-intro') {
+      const titleOpacity = state.introTitleOpacity !== undefined ? state.introTitleOpacity : (state.segment === 'A' ? state.entranceProgress : 0);
+      const prog = state.introTitleProgress !== undefined ? state.introTitleProgress : 0;
+      // Continuous upward drift: starts at +2vh, glides through center and continues to -18vh
+      // Never settles into a stationary center hold
+      const driftY = (2 - prog * 20) * (vh / 100);
+
+      el.style.display = titleOpacity > 0 ? 'block' : 'none';
+      el.style.opacity = titleOpacity;
+      el.style.setProperty('--cat-prog', '1');
+      el.style.transform = `translate(-50%, calc(-50% + ${driftY}px))`;
+      el.style.pointerEvents = 'none';
+      el.setAttribute('inert', '');
+      return;
+    }
+
     let opacity = 0;
     let y = 0;
     
@@ -295,15 +337,14 @@ export function updateMenuState(state, layout, vh) {
       el.style.setProperty('--cat-prog', 1);
       el.style.setProperty('--menu-prog', 1);
       opacity = 1;
-      // Group intros don't scroll during hold, they just freeze
-      y = sec.type === 'group-intro' ? 0 : -state.holdMenuScroll;
+      y = -state.holdMenuScroll;
     }
     else if (state.segment === 'X') {
       el.style.setProperty('--cat-prog', state.categoryProgress); 
       el.style.setProperty('--menu-prog', state.menuProgress);
       opacity = 1 - state.exitProgress;
       
-      const baseScroll = sec.type === 'group-intro' ? 0 : -sec.H_length;
+      const baseScroll = -sec.H_length;
       // Lift up during exit
       y = baseScroll - (state.exitProgress * vh * 0.2); 
     }
@@ -326,21 +367,109 @@ export function updateMenuState(state, layout, vh) {
     }
 
     // CRITICAL: Must preserve the -50% horizontal translation from CSS!
-    if (sec.type === 'group-intro') {
-      el.style.transform = `translate(-50%, calc(-50% + ${y}px))`;
-    } else {
-      el.style.transform = `translateX(-50%) translateY(${y}px)`;
-    }
+    el.style.transform = `translateX(-50%) translateY(${y}px)`;
+
+      // ── Sticky category heading ─────────────────────────────────────────
+      // The .sec-header must stay pinned at a fixed viewport position (just
+      // below the nav) for the ENTIRE H phase and for the start of X.
+      //
+      // Math:
+      //   heading_absolute_y = sectionTopPx + y + compensation
+      //   We want this = targetY = navBottomPx + cushion
+      //   => compensation = targetY - sectionTopPx - y
+      //   During H: y = -holdMenuScroll
+      //   => compensation = (targetY - sectionTopPx) + holdMenuScroll
+      //                   = holdMenuScroll - naturalOffset
+      //   (clamp to >= 0 so we never push it below its natural start)
+      //
+      // During X: keep it pinned at the same height it was at H-end,
+      // then let it smoothly release and exit with the section as
+      // exitProgress goes 0 → 1.
+      const secHeader = el.querySelector(':scope > .sec-header');
+      const menuContent = el.querySelector(':scope > .menu-content');
+
+      if (secHeader) {
+        const sectionTopPx  = 0.15 * vh;   // matches CSS: top: 15vh
+        const navBottomPx   = 80;           // matches CSS: height: 80px on #top-nav
+        const cushion       = 12;           // breathing gap below nav
+        const targetY       = navBottomPx + cushion;               // 92px
+        // naturalOffset: how many px of holdMenuScroll pass before pinning begins
+        // (the heading naturally descends from 15vh; once it reaches targetY it pins)
+        const naturalOffset = Math.max(0, sectionTopPx - targetY); // max(0, 15vh - 92)
+
+        if (state.segment === 'H') {
+          // Uncapped compensation: grows exactly as holdMenuScroll does,
+          // keeping heading_absolute_y = targetY throughout the whole hold.
+          const compensation = Math.max(0, state.holdMenuScroll - naturalOffset);
+          secHeader.style.transform = `translateY(${compensation}px)`;
+
+        } else if (state.segment === 'X') {
+          // At the end of H (start of X), holdMenuScroll = H_length.
+          // Compensation at that moment:
+          const compensationAtHEnd = Math.max(0, sec.H_length - naturalOffset);
+          // Smoothly release: at exitProgress=0 heading is still pinned (last dish
+          // just started moving); at exitProgress=1 heading is at section top
+          // and exits with it fully. This gives a natural joined exit.
+          const compensation = compensationAtHEnd * (1 - state.exitProgress);
+          secHeader.style.transform = `translateY(${compensation}px)`;
+
+        } else {
+          // A, C, J: CSS --cat-prog animation drives the heading normally.
+          secHeader.style.transform = '';
+        }
+      }
+
+      // ── Clipping boundary for scrolling menu items ──────────────────────
+      // Ensures all scrolling dishes, text, prices, and controls disappear
+      // behind the pinned category heading rather than passing over it.
+      if (secHeader && menuContent) {
+        if (state.segment === 'H' || state.segment === 'X') {
+          const headerRect = secHeader.getBoundingClientRect();
+          const contentRect = menuContent.getBoundingClientRect();
+
+          // Clipping boundary begins immediately below the pinned heading.
+          // 4px below heading bottom is 100% transparent and hard-clipped.
+          // 20px below heading bottom is 100% visible (16px smooth feather).
+          const fadeDistance = 16;
+          const yTransparent = headerRect.bottom + 4;
+          const yOpaque = yTransparent + fadeDistance;
+
+          const localTransparent = yTransparent - contentRect.top;
+          const localOpaque = yOpaque - contentRect.top;
+
+          if (localOpaque <= 0) {
+            menuContent.style.webkitMaskImage = '';
+            menuContent.style.maskImage = '';
+            menuContent.style.clipPath = '';
+          } else {
+            const cutY = Math.max(0, localTransparent);
+            const fadeY = Math.max(0, localOpaque);
+
+            menuContent.style.webkitMaskImage = `linear-gradient(to bottom, transparent 0px, transparent ${cutY}px, black ${fadeY}px, black 100%)`;
+            menuContent.style.maskImage = `linear-gradient(to bottom, transparent 0px, transparent ${cutY}px, black ${fadeY}px, black 100%)`;
+            menuContent.style.clipPath = `inset(${cutY}px -40px 0px -40px)`;
+          }
+        } else {
+          menuContent.style.webkitMaskImage = '';
+          menuContent.style.maskImage = '';
+          menuContent.style.clipPath = '';
+        }
+      }
   });
 
-  // Cinematic Scrim (Phase 7 Fix): 
-  // Darken the video seamlessly in sync with menu entrance/exit so text is perfectly legible
+  // Cinematic Scrim: 
+  // Darken the video seamlessly in sync with menu entrance/exit so text is perfectly legible.
+  // Group intro video has no menu, so keep it clear and cinematic.
   const scrim = document.getElementById('video-scrim');
   if (scrim) {
     let scrimOpacity = 0;
-    if (state.segment === 'A') scrimOpacity = state.entranceProgress;
-    else if (state.segment === 'H') scrimOpacity = 1;
-    else if (state.segment === 'X') scrimOpacity = 1 - state.exitProgress;
+    if (activeSec.type === 'group-intro') {
+      scrimOpacity = 0.12 * (state.introTitleOpacity || 0);
+    } else {
+      if (state.segment === 'A') scrimOpacity = state.entranceProgress;
+      else if (state.segment === 'H') scrimOpacity = 1;
+      else if (state.segment === 'X') scrimOpacity = 1 - state.exitProgress;
+    }
     scrim.style.opacity = scrimOpacity;
   }
 }

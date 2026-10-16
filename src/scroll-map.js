@@ -86,6 +86,85 @@ export function getScrollState(scrollY, layout) {
   const { holdP, frameCount, scrubLengthVh } = sec;
   const scrubPx = scrubLengthVh * (sec.A_length / holdP); // recover vh*px conversion
 
+  // ── Special handling for Group Intro (FOOD) ───────────────────────────
+  // Continuous, 100% scroll-driven sequence.
+  // Video never freezes; title continuously emerges, moves upward, and fades out.
+  if (sec.type === 'group-intro') {
+    if (scrollY < sec.A_end) {
+      const rawT = sec.A_length > 0 ? (scrollY - sec.A_start) / sec.A_length : 0;
+      const t = Math.max(0, Math.min(1, rawT));
+      const p = t; // Video progress continuously advances 0.0 -> 1.0
+
+      // Title choreography for 78-frame sequence:
+      // "FOOD" text emerges, glides upward, and fades out cleanly BEFORE
+      // the background video's "THE NINES" logo appears (at frame 25/26, t ≈ 0.32).
+      // 0.00 -> 0.10: Emerges smoothly from center
+      // 0.10 -> 0.20: Glides upward at 100% opacity
+      // 0.20 -> 0.28: Fades out smoothly while continuing upward
+      // t >= 0.28: Completely faded out (zero overlap with THE NINES logo)
+      const FADE_OUT_END = 0.28;
+      let titleOpacity = 0;
+      if (t < 0.10) {
+        titleOpacity = t / 0.10;
+      } else if (t < 0.20) {
+        titleOpacity = 1;
+      } else if (t < FADE_OUT_END) {
+        titleOpacity = 1 - (t - 0.20) / (FADE_OUT_END - 0.20);
+      } else {
+        titleOpacity = 0;
+      }
+
+      const titleProg = Math.min(1, t / FADE_OUT_END);
+
+      return {
+        sectionIndex: idx,
+        section: sec,
+        segment: 'A',
+        videoProgress: p,
+        frameIndex: Math.max(0, Math.min(frameCount - 1, Math.round(p * (frameCount - 1)))),
+        segmentProgress: t,
+        entranceProgress: titleOpacity,
+        categoryProgress: titleOpacity,
+        menuProgress: 0,
+        exitProgress: 0,
+        holdMenuScroll: 0,
+        buttonsActive: false,
+        crossDissolve: null,
+        introTitleProgress: titleProg,
+        introTitleOpacity: titleOpacity,
+      };
+    }
+
+    // Segment J: Cross-dissolve into next section (First Course)
+    if (scrollY < sec.J_end) {
+      const rawT = sec.J_length > 0 ? (scrollY - sec.J_start) / sec.J_length : 0;
+      const t = Math.max(0, Math.min(1, rawT));
+      const nextIdx = Math.min(idx + 1, layout.length - 1);
+
+      return {
+        sectionIndex: idx,
+        section: sec,
+        segment: 'J',
+        videoProgress: 1.0,
+        frameIndex: frameCount - 1,
+        segmentProgress: t,
+        entranceProgress: 0,
+        categoryProgress: 0,
+        menuProgress: 0,
+        exitProgress: 1,
+        holdMenuScroll: 0,
+        buttonsActive: false,
+        crossDissolve: {
+          nextSectionIndex: nextIdx,
+          nextSection: layout[nextIdx],
+          progress: t,
+        },
+        introTitleProgress: 1,
+        introTitleOpacity: 0,
+      };
+    }
+  }
+
   // ── Segment A: Scrub + Entrance ──────────────────────────────
   if (scrollY < sec.A_end) {
     const rawT = sec.A_length > 0 ? (scrollY - sec.A_start) / sec.A_length : 0;
@@ -117,7 +196,7 @@ export function getScrollState(scrollY, layout) {
       section: sec,
       segment: 'A',
       videoProgress: p,
-      frameIndex: Math.round(p * (frameCount - 1)),
+      frameIndex: Math.max(0, Math.min(frameCount - 1, Math.round(p * (frameCount - 1)))),
       segmentProgress: t,
       entranceProgress,
       categoryProgress,
@@ -177,7 +256,7 @@ export function getScrollState(scrollY, layout) {
       section: sec,
       segment: 'X',
       videoProgress: p,
-      frameIndex: Math.round(p * (frameCount - 1)),
+      frameIndex: Math.max(0, Math.min(frameCount - 1, Math.round(p * (frameCount - 1)))),
       segmentProgress: t,
       entranceProgress: 1,
       categoryProgress: 1, // Stay at 1 so CSS transform doesn't push it down

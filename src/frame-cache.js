@@ -20,11 +20,18 @@ const MAX_CONCURRENT_LOADS = 6;
 
 /**
  * Generate coarse-to-fine loading order for `count` frames.
- * Loads every 8th frame first, then 4th, then 2nd, then all.
+ * Loads boundary frames first, then every 8th frame, 4th, 2nd, and all.
  */
-function coarseToFineOrder(count) {
+function coarseToFineOrder(count, key) {
   const order = [];
   const seen = new Set();
+
+  for (const boundaryIdx of [0, count - 1]) {
+    if (boundaryIdx < count && !seen.has(boundaryIdx)) {
+      seen.add(boundaryIdx);
+      order.push(boundaryIdx);
+    }
+  }
 
   for (let step of [8, 4, 2, 1]) {
     for (let i = 0; i < count; i += step) {
@@ -74,69 +81,148 @@ export class FrameCache {
 
     const ac = new AbortController();
     const images = new Map();
+    const inFlight = new Set();
+    const order = coarseToFineOrder(frameCount, key);
+
     const state = {
       key,
       framePath,
       frameCount,
       images,
+      inFlight,
+      queue: order,
       loading: true,
       loadedCount: 0,
+      activeWorkers: 0,
+      priority,
       abortController: ac,
     };
     this._sections.set(key, state);
 
-    // Start loading in coarse-to-fine order
-    const order = coarseToFineOrder(frameCount);
-    this._loadBatch(state, order, 0, priority);
+    // Start loading queue with active worker pool
+    this._pump(state);
 
     return state;
   }
 
   /**
-   * Load frames in batches to control concurrency.
+   * Pipelined worker pool: ensures MAX_CONCURRENT_LOADS active requests
+   * are maintained continuously without head-of-line blocking.
    */
-  _loadBatch(state, order, startIdx, priority) {
+  _pump(state) {
     if (state.abortController.signal.aborted) return;
-    if (startIdx >= order.length) {
-      state.loading = false;
-      return;
-    }
 
-    const batch = order.slice(startIdx, startIdx + MAX_CONCURRENT_LOADS);
-    let completed = 0;
+    while (state.activeWorkers < MAX_CONCURRENT_LOADS && state.queue.length > 0) {
+      const frameIdx = state.queue.shift();
 
-    batch.forEach(frameIdx => {
-      if (state.abortController.signal.aborted) return;
-      if (state.images.has(frameIdx)) {
-        completed++;
-        if (completed >= batch.length) {
-          this._loadBatch(state, order, startIdx + batch.length, priority);
-        }
-        return;
+      // Skip already loaded or currently in-flight frames
+      if (state.images.has(frameIdx) || state.inFlight.has(frameIdx)) {
+        continue;
       }
+
+      state.inFlight.add(frameIdx);
+      state.activeWorkers++;
 
       const img = new Image();
       img.decoding = 'async';
+      if (state.priority === 'high') img.fetchPriority = 'high';
+
+      const onSlotFree = () => {
+        state.inFlight.delete(frameIdx);
+        state.activeWorkers--;
+        if (state.queue.length === 0 && state.activeWorkers === 0) {
+          state.loading = false;
+        } else {
+          this._pump(state);
+        }
+      };
+
       img.onload = () => {
-        if (!state.abortController.signal.aborted) {
+        if (state.abortController.signal.aborted) {
+          onSlotFree();
+          return;
+        }
+
+        // Asynchronously decode image off the main thread before marking ready
+        if (typeof img.decode === 'function') {
+          img.decode().catch(() => {}).finally(() => {
+            if (!state.abortController.signal.aborted) {
+              state.images.set(frameIdx, img);
+              state.loadedCount++;
+            }
+            onSlotFree();
+          });
+        } else {
           state.images.set(frameIdx, img);
           state.loadedCount++;
-        }
-        completed++;
-        if (completed >= batch.length) {
-          this._loadBatch(state, order, startIdx + batch.length, priority);
+          onSlotFree();
         }
       };
+
       img.onerror = () => {
-        completed++;
-        if (completed >= batch.length) {
-          this._loadBatch(state, order, startIdx + batch.length, priority);
-        }
+        onSlotFree();
       };
-      // fetchpriority hint for high-priority sections
-      if (priority === 'high') img.fetchPriority = 'high';
+
       img.src = `${state.framePath}frame${pad(frameIdx)}.webp`;
-    });
+    }
+
+    if (state.queue.length === 0 && state.activeWorkers === 0) {
+      state.loading = false;
+    }
+  }
+
+  /**
+   * Prioritize a window of upcoming frames in the direction of scroll.
+   * Promotes the closest upcoming frames to the front of the queue
+   * so they are pre-downloaded and pre-decoded ahead of the user's view.
+   */
+  prioritizeWindow(key, currentFrameIndex, direction = 1) {
+    const state = this._sections.get(key);
+    if (!state || !state.queue || state.abortController.signal.aborted) return;
+
+    const count = state.frameCount;
+    const center = Math.max(0, Math.min(count - 1, Math.round(currentFrameIndex || 0)));
+
+    const priorityFrames = [];
+    const spanAhead = 14;
+    const spanBehind = 4;
+
+    if (direction >= 0) {
+      // Forward scroll: prioritize upcoming frames ahead
+      for (let i = 0; i <= spanAhead; i++) {
+        const idx = center + i;
+        if (idx < count && !state.images.has(idx) && !state.inFlight.has(idx)) {
+          priorityFrames.push(idx);
+        }
+      }
+      for (let i = 1; i <= spanBehind; i++) {
+        const idx = center - i;
+        if (idx >= 0 && !state.images.has(idx) && !state.inFlight.has(idx)) {
+          priorityFrames.push(idx);
+        }
+      }
+    } else {
+      // Reverse scroll: prioritize preceding frames
+      for (let i = 0; i <= spanAhead; i++) {
+        const idx = center - i;
+        if (idx >= 0 && !state.images.has(idx) && !state.inFlight.has(idx)) {
+          priorityFrames.push(idx);
+        }
+      }
+      for (let i = 1; i <= spanBehind; i++) {
+        const idx = center + i;
+        if (idx < count && !state.images.has(idx) && !state.inFlight.has(idx)) {
+          priorityFrames.push(idx);
+        }
+      }
+    }
+
+    if (priorityFrames.length > 0) {
+      const pSet = new Set(priorityFrames);
+      state.queue = priorityFrames.concat(state.queue.filter(idx => !pSet.has(idx)));
+      state.priority = 'high';
+      this._pump(state);
+    }
   }
 
   /**
@@ -147,6 +233,8 @@ export class FrameCache {
     if (state) {
       state.abortController.abort();
       state.loading = false;
+      state.inFlight.clear();
+      state.queue = [];
     }
   }
 
@@ -183,14 +271,25 @@ export class FrameCache {
     const state = this._sections.get(key);
     if (!state || state.loadedCount === 0) return null;
 
-    // Check exact match first
-    if (state.images.has(frameIndex)) return state.images.get(frameIndex);
+    const count = state.frameCount;
+    const target = Math.max(0, Math.min(count - 1, Math.round(Number(frameIndex) || 0)));
 
-    // Search outward
-    for (let d = 1; d < state.frameCount; d++) {
-      if (state.images.has(frameIndex - d)) return state.images.get(frameIndex - d);
-      if (state.images.has(frameIndex + d)) return state.images.get(frameIndex + d);
+    // Check exact match first
+    if (state.images.has(target)) return state.images.get(target);
+
+    // Search outward within valid bounds
+    for (let d = 1; d < count; d++) {
+      const left = target - d;
+      const right = target + d;
+      if (left >= 0 && state.images.has(left)) return state.images.get(left);
+      if (right < count && state.images.has(right)) return state.images.get(right);
     }
+
+    // Fallback: return any loaded frame in this section
+    for (const img of state.images.values()) {
+      if (img) return img;
+    }
+
     return null;
   }
 

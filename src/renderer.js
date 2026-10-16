@@ -20,6 +20,7 @@ export class Renderer {
     this.frameCache = frameCache;
     this._lastDrawnKey = null;
     this._lastDrawnFrame = -1;
+    this._lastValidImage = null; // Robust fallback to eliminate black screens
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -45,8 +46,13 @@ export class Renderer {
     this._displayWidth = w;
     this._displayHeight = h;
     
-    // Force a redraw on resize
+    // Force a redraw on resize and immediately restore last valid frame so canvas never flashes black
     this._lastDrawnKey = null;
+    this._lastDrawnFrame = -1;
+    if (this._lastValidImage) {
+      this.ctx.globalAlpha = 1;
+      this._drawImageCover(this._lastValidImage);
+    }
   }
 
   /**
@@ -57,8 +63,14 @@ export class Renderer {
   render(state) {
     const { section, frameIndex, crossDissolve } = state;
     const key = section.key;
+    // Prioritize upcoming frames in direction of motion for fluid playback
+    const direction = this._lastFrameIndex !== undefined ? (frameIndex >= this._lastFrameIndex ? 1 : -1) : 1;
+    this._lastFrameIndex = frameIndex;
+    this.frameCache.prioritizeWindow(key, frameIndex, direction);
 
     if (crossDissolve) {
+      // Also ensure start of next section is prioritized
+      this.frameCache.prioritizeWindow(crossDissolve.nextSection.key, 0, 1);
       // ── Cross-dissolve between two sections ──
       this._renderCrossDissolve(
         key, frameIndex,
@@ -76,7 +88,7 @@ export class Renderer {
 
   /**
    * Draw a single frame from a section.
-   * Falls back to the section's blur placeholder if no frame is loaded yet.
+   * Falls back to last valid image / blur placeholder if no frame is loaded yet.
    */
   _renderFrame(sectionKey, frameIndex, section) {
     // Skip redraw if same frame
@@ -86,12 +98,21 @@ export class Renderer {
 
     const img = this.frameCache.nearestFrame(sectionKey, frameIndex);
     if (!img) {
-      // No frame yet — draw blur placeholder if available
+      // Robust fallback: if we already have a valid rendered frame, keep showing it!
+      // NEVER blank the canvas to solid black while waiting for a frame.
+      if (this._lastValidImage) {
+        this.ctx.globalAlpha = 1;
+        this._drawImageCover(this._lastValidImage);
+        return;
+      }
+      // No frame yet at all (initial startup) — draw blur placeholder if available
       this._drawPlaceholder(section);
       return;
     }
 
+    this.ctx.globalAlpha = 1;
     this._drawImageCover(img);
+    this._lastValidImage = img;
     this._lastDrawnKey = sectionKey;
     this._lastDrawnFrame = frameIndex;
   }
@@ -101,6 +122,12 @@ export class Renderer {
    * Cached as an Image per section key.
    */
   _drawPlaceholder(section) {
+    if (this._lastValidImage) {
+      this.ctx.globalAlpha = 1;
+      this._drawImageCover(this._lastValidImage);
+      return;
+    }
+
     if (!section) {
       this.ctx.fillStyle = '#0a0a0a';
       this.ctx.fillRect(0, 0, this._displayWidth, this._displayHeight);
@@ -124,8 +151,9 @@ export class Renderer {
       this.ctx.filter = 'blur(12px)';
       this._drawImageCover(ph.img);
       this.ctx.filter = 'none';
+      this._lastValidImage = ph.img;
     } else {
-      // Placeholder not yet ready — show a solid dark background
+      // Placeholder not yet ready on initial start — show dark background
       this.ctx.fillStyle = '#0a0a0a';
       this.ctx.fillRect(0, 0, this._displayWidth, this._displayHeight);
     }
@@ -141,23 +169,31 @@ export class Renderer {
    * @param {number} progress - 0 = all A, 1 = all B
    */
   _renderCrossDissolve(keyA, frameA, keyB, frameB, progress) {
-    const imgA = this.frameCache.nearestFrame(keyA, frameA);
+    const imgA = this.frameCache.nearestFrame(keyA, frameA) || this._lastValidImage;
     const imgB = this.frameCache.nearestFrame(keyB, frameB);
 
     // Draw A at full opacity
     if (imgA) {
       this.ctx.globalAlpha = 1;
       this._drawImageCover(imgA);
+      this._lastValidImage = imgA;
+    } else if (this._lastValidImage) {
+      this.ctx.globalAlpha = 1;
+      this._drawImageCover(this._lastValidImage);
     } else {
-      this.ctx.fillStyle = '#000';
+      this.ctx.fillStyle = '#0a0a0a';
       this.ctx.fillRect(0, 0, this._displayWidth, this._displayHeight);
     }
 
     // Draw B on top with dissolve opacity
     if (imgB && progress > 0) {
-      this.ctx.globalAlpha = progress;
+      const alpha = Math.max(0, Math.min(1, progress));
+      this.ctx.globalAlpha = alpha;
       this._drawImageCover(imgB);
       this.ctx.globalAlpha = 1;
+      if (progress >= 0.5) {
+        this._lastValidImage = imgB;
+      }
     }
 
     this._lastDrawnKey = null;  // force redraw next time

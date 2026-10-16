@@ -65,9 +65,9 @@ export async function buildSectionConfig() {
         groupKey: group.key,
         framePath: `./frames/${group.key}/`,
         frameCount: m.frameCount,
-        holdFrame: m.holdFrame,
-        holdP: m.holdFrame / m.frameCount,
-        scrubLengthVh: 200,  // shorter scrub for intros
+        holdFrame: null,
+        holdP: 1.0,
+        scrubLengthVh: 140,  // calibrated for 78-frame intro sequence
         estimatedMenuHeightPx: 0,  // no menu items in group intro
         hasMenu: false,
         placeholderBytes: m.placeholderBytes,
@@ -121,10 +121,61 @@ export function computeScrollLayout(sections, vh) {
   let scrollOffset = 0;  // current absolute scroll position
 
   return sections.map((sec, index) => {
-    const holdP = sec.holdP;
-    const scrubPx = (sec.scrubLengthVh / 100) * vh;
-    const exitPx = (CHOREOGRAPHY.exitLengthVh / 100) * vh;
+    const isGroupIntro = sec.type === 'group-intro';
+    const isLast = index === sections.length - 1;
     const handoffPx = (CHOREOGRAPHY.handoffLengthVh / 100) * vh;
+    const scrubPx = (sec.scrubLengthVh / 100) * vh;
+
+    if (isGroupIntro) {
+      // Standalone continuous intro:
+      // Video scrubs continuously from frame 0 to end (p: 0.0 -> 1.0)
+      // Never freezes or holds. Transitions smoothly via Segment J cross-dissolve.
+      const A_length = scrubPx;
+      const H_length = 0;
+      const X_length = 0;
+      const C_length = 0;
+      const J_length = isLast ? 0 : handoffPx;
+      const totalHeight = A_length + J_length;
+
+      const layout = {
+        ...sec,
+        index,
+        scrollStart: scrollOffset,
+        scrollEnd: scrollOffset + totalHeight,
+        totalHeight,
+
+        A_start: scrollOffset,
+        A_end: scrollOffset + A_length,
+        A_length,
+
+        H_start: scrollOffset + A_length,
+        H_end: scrollOffset + A_length,
+        H_length: 0,
+
+        X_start: scrollOffset + A_length,
+        X_end: scrollOffset + A_length,
+        X_length: 0,
+        X_videoResumeAt: scrollOffset + A_length,
+
+        C_start: scrollOffset + A_length,
+        C_end: scrollOffset + A_length,
+        C_length: 0,
+
+        J_start: scrollOffset + A_length,
+        J_end: scrollOffset + totalHeight,
+        J_length,
+
+        p_at_hold: 1.0,
+        p_at_exit_end: 1.0,
+        p_covered_in_X: 0,
+      };
+
+      scrollOffset += totalHeight;
+      return layout;
+    }
+
+    const holdP = sec.holdP;
+    const exitPx = (CHOREOGRAPHY.exitLengthVh / 100) * vh;
 
     // Segment A: video scrubs from p=0 to p=holdP
     const A_length = holdP * scrubPx;
@@ -133,7 +184,7 @@ export function computeScrollLayout(sections, vh) {
     // For menus, enforce a minimum hold of 60vh so they don't pop instantly even if short.
     const H_length = sec.hasMenu 
       ? (sec.measuredHeightPx !== undefined ? Math.max(sec.measuredHeightPx, 60 * vh / 100) : sec.estimatedMenuHeightPx) 
-      : 0; // 0 hold for group intros so the video flows continuously
+      : 0;
 
     // Segment X: exit (exitLengthVh)
     const X_length = exitPx;
@@ -149,7 +200,6 @@ export function computeScrollLayout(sections, vh) {
     const C_length = remaining_p * scrubPx;
 
     // Segment J: cross-dissolve (skip for last section)
-    const isLast = index === sections.length - 1;
     const J_length = isLast ? 0 : handoffPx;
 
     const totalHeight = A_length + H_length + X_length + C_length + J_length;

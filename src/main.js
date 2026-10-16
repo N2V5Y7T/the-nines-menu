@@ -50,8 +50,11 @@ async function init() {
   renderer = new Renderer(canvas, frameCache);
   debugHUD = new DebugHUD();
 
-  // Kick off loading section 0 (current) at high priority
+  // Kick off loading section 0 (current) at high priority and section 1 ahead of time
   loader.jumpTo(0);
+  if (layout.length > 1) {
+    loader._ensureLoaded(1, 'low');
+  }
 
   // Phase 3: Build DOM menu and measure real heights
   buildMenuDOM(layout);
@@ -68,6 +71,8 @@ async function init() {
   // Phase 4: Init Nav and List (Phase 5: pass loader; Phase 6: pass easer for snap)
   initNav(layout, loader, easer);
   initListUI();
+
+  window.__theNines = { layout, loader, easer, renderer, frameCache };
 
   // Set up scroll container height
   scrollContainer = document.getElementById('scroll-container');

@@ -120,19 +120,28 @@
 
     /* Emergence animation logic */
     /* Starting down at 15vh (gentle rise) instead of 35vh prevents it from moving too fast */
-    .group-title, .sec-header {
+    .sec-header {
       opacity: var(--cat-prog, 1);
       transform: translateY(calc((1 - var(--cat-prog, 1)) * 12vh));
       text-align: center;
       margin-bottom: 24px;
       transition: color 0.4s ease;
+      /* Category heading stays in foreground above scrolling items */
+      position: relative;
+      z-index: 10;
     }
     .menu-content {
       opacity: var(--menu-prog, 1);
       /* Menu rises smoothly from just below */
       transform: translateY(calc((1 - var(--menu-prog, 1)) * 8vh));
       transition: color 0.4s ease;
+      position: relative;
+      z-index: 1;
+      will-change: transform, opacity;
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
     }
+
 
     /* Typography */
     .group-title {
@@ -143,6 +152,10 @@
       text-transform: uppercase;
       letter-spacing: 0.15em;
       color: #fff;
+      /* Entrance animation — same as .sec-header */
+      opacity: var(--cat-prog, 1);
+      transform: translateY(calc((1 - var(--cat-prog, 1)) * 12vh));
+      transition: color 0.4s ease;
     }
 
     .section-title {
@@ -396,6 +409,94 @@
       color: #fff;
     }
 
+    /* ── Inline quantity control (replaces add-btn when qty > 0) ── */
+    .add-btn.qty-active {
+      /* Widen to fit  − N + */
+      width: auto;
+      min-width: 72px;
+      height: 28px;
+      border-radius: 14px;
+      border-color: #c17b55;
+      background: rgba(193,123,85,0.15);
+      padding: 0 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      cursor: default; /* outer btn is no longer the tap target */
+    }
+    .add-btn.qty-active::after {
+      display: none; /* suppress the expanded tap-zone pseudo-element */
+    }
+    .qty-minus,
+    .qty-plus {
+      display: flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      font-size: 16px; font-weight: 300;
+      color: #fff;
+      cursor: pointer;
+      /* give each span its own 44px tap zone */
+      position: relative;
+    }
+    .qty-minus::before,
+    .qty-plus::before {
+      content: '';
+      position: absolute;
+      inset: -10px;
+    }
+    .qty-minus:hover, .qty-plus:hover {
+      background: rgba(255,255,255,0.15);
+    }
+    .qty-num {
+      font-size: 14px; font-weight: 500;
+      color: #fff;
+      min-width: 14px;
+      text-align: center;
+    }
+
+    /* ── My List drawer — qty controls ── */
+    .list-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+      gap: 12px;
+    }
+    .list-item-info {
+      display: flex; flex-direction: column; gap: 3px;
+      flex: 1; min-width: 0;
+    }
+    .list-item-name { font-size: 15px; font-weight: 400; }
+    .list-item-unit-price { font-size: 12px; color: #888; }
+    .list-item-price { font-size: 14px; color: #c17b55; font-weight: 500; }
+
+    .list-item-qty-control {
+      display: flex; align-items: center; gap: 8px;
+      flex-shrink: 0;
+    }
+    .list-qty-btn {
+      background: none;
+      border: 1px solid rgba(255,255,255,0.25);
+      color: #fff;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 300;
+      cursor: pointer;
+      min-width: 44px; min-height: 44px; /* WCAG touch target */
+      position: relative;
+      /* shrink visual size back while keeping 44px tap area */
+      box-sizing: border-box;
+    }
+    .list-qty-btn:hover { border-color: #c17b55; color: #c17b55; }
+    .list-qty-num {
+      font-size: 15px; font-weight: 500;
+      color: #fff;
+      min-width: 20px; text-align: center;
+    }
+    .empty-list {
+      color: #888; font-style: italic; text-align: center; margin-top: 40px;
+    }
+
     /* Drawers */
     #drawer-overlay {
       position: fixed; inset: 0;
@@ -471,20 +572,7 @@
       color: #bbb;
     }
 
-    /* List Items */
-    .empty-list {
-      color: #888; font-style: italic; text-align: center; margin-top: 40px;
-    }
-    .list-item {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
-    }
-    .list-item-info { display: flex; flex-direction: column; gap: 4px; }
-    .list-item-name { font-size: 15px; font-weight: 400; }
-    .list-item-price { font-size: 14px; color: #c17b55; }
-    .remove-btn {
-      background: none; border: none; color: #888; font-size: 16px; cursor: pointer; padding: 8px;
-    }
+
 
     .drawer-footer {
       padding: 24px; border-top: 1px solid rgba(255,255,255,0.1);
@@ -581,12 +669,12 @@
     #nav-hamburger-btn,
     #nav-list-btn,
     .add-btn,
-    .remove-btn,
     .close-drawer-btn,
     .nav-link {
       min-height: 44px;
       min-width: 44px;
     }
+
     /* add-btn is circular — override to keep it round but still 44×44 tap area */
     .add-btn {
       width: 28px;
@@ -736,11 +824,11 @@
     </div>
 
     <button id="nav-list-btn" aria-label="My List">
-      <!-- Cart / bag icon -->
+      <!-- Shopping trolley / cart icon -->
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
-        <line x1="3" y1="6" x2="21" y2="6"/>
-        <path d="M16 10a4 4 0 01-8 0"/>
+        <circle cx="9" cy="21" r="1"/>
+        <circle cx="20" cy="21" r="1"/>
+        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
       </svg>
       <span id="list-count">0</span>
     </button>

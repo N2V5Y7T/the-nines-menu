@@ -43,24 +43,22 @@ export class SmartLoader {
     // Always ensure current section is loading at HIGH priority
     this._ensureLoaded(idx, 'high');
 
-    // Start preloading next section once we're 50%+ through the hold or scrub
-    const nearEnd = state.segment === 'H' || state.segment === 'X'
-      || state.segment === 'C' || state.segment === 'J'
-      || (state.segment === 'A' && state.segmentProgress > 0.5);
-
-    if (nearEnd) {
-      // Preload next section at low priority
-      if (idx + 1 < this._layout.length) this._ensureLoaded(idx + 1, 'low');
+    // Always ensure next section is preloading ahead of time
+    if (idx + 1 < this._layout.length) {
+      this._ensureLoaded(idx + 1, 'low');
     }
 
-    // If we moved forward to a new section, also kick off the section after next
-    // at very low priority (so it's slightly cached when needed)
+    // Preload section after next once user is past 25% or in hold
+    const nearEnd = state.segment === 'H' || state.segment === 'X'
+      || state.segment === 'C' || state.segment === 'J'
+      || (state.segment === 'A' && state.segmentProgress > 0.25);
+
+    if (nearEnd && idx + 2 < this._layout.length) {
+      this._ensureLoaded(idx + 2, 'low');
+    }
+
     if (idx !== this._lastIdx) {
       this._lastIdx = idx;
-      if (idx + 2 < this._layout.length) {
-        // Only queue it, don't aggressively fetch — mark as 'low' so coarse frames come first
-        this._ensureLoaded(idx + 2, 'low');
-      }
     }
   }
 

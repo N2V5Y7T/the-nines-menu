@@ -27,7 +27,8 @@ export function initNav(layout, loader, easer) {
     const className = isGroup ? 'nav-link group-link' : 'nav-link section-link';
 
     if (sec.label) {
-      html += `<button class="${className}" data-scroll="${sec.H_start}" data-idx="${idx}">${sec.label}</button>`;
+      const scrollTarget = isGroup ? sec.scrollStart : sec.H_start;
+      html += `<button class="${className}" data-scroll="${scrollTarget}" data-idx="${idx}">${sec.label}</button>`;
     }
     idx++;
   });

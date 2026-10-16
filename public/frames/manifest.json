@@ -36,9 +36,9 @@
     "placeholderBytes": 130
   },
   "food": {
-    "frameCount": 120,
-    "holdFrame": 60,
-    "sizeBytes": 7751612,
+    "frameCount": 78,
+    "holdFrame": 39,
+    "sizeBytes": 5757542,
     "placeholderBytes": 132
   },
   "nonveg-mains": {
