@@ -15,8 +15,8 @@ export const CHOREOGRAPHY = {
   
   // Exit
   exitVideoResumeAt:  0.40,   // fraction of exit segment where video resumes
-  exitLengthVh:       70,     // exit segment scroll length in vh
-  handoffLengthVh:    35,     // cross-dissolve length in vh
+  exitLengthVh:       40,     // exit segment scroll length in vh (responsive and clean)
+  handoffLengthVh:    22,     // cross-dissolve length in vh (smooth quick crossfade)
 };
 
 // Estimate menu height in px from item count (refined in Phase 3 with real DOM)
@@ -67,7 +67,7 @@ export async function buildSectionConfig() {
         frameCount: m.frameCount,
         holdFrame: null,
         holdP: 1.0,
-        scrubLengthVh: 140,  // calibrated for 78-frame intro sequence
+        scrubLengthVh: 85,   // calibrated for smooth, effortless 78-frame intro sequence
         estimatedMenuHeightPx: 0,  // no menu items in group intro
         hasMenu: false,
         placeholderBytes: m.placeholderBytes,
@@ -96,7 +96,7 @@ export async function buildSectionConfig() {
         frameCount: m.frameCount,
         holdFrame: sec.holdFrame ?? m.holdFrame,
         holdP,
-        scrubLengthVh: sec.scrubLengthVh || 280,
+        scrubLengthVh: sec.scrubLengthVh || 140,
         estimatedMenuHeightPx: estimateMenuHeight(sec),
         hasMenu: true,
         items: sec.items || null,
@@ -181,9 +181,9 @@ export function computeScrollLayout(sections, vh) {
     const A_length = holdP * scrubPx;
 
     // Segment H: video frozen, menu scrolls
-    // For menus, enforce a minimum hold of 60vh so they don't pop instantly even if short.
+    // For menus, enforce a comfortable minimum hold of 25vh so short menus don't vanish prematurely
     const H_length = sec.hasMenu 
-      ? (sec.measuredHeightPx !== undefined ? Math.max(sec.measuredHeightPx, 60 * vh / 100) : sec.estimatedMenuHeightPx) 
+      ? (sec.measuredHeightPx !== undefined ? Math.max(sec.measuredHeightPx, 25 * vh / 100) : sec.estimatedMenuHeightPx) 
       : 0;
 
     // Segment X: exit (exitLengthVh)

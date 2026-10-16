@@ -198,6 +198,7 @@ export function buildMenuDOM(layout) {
       html += `</div>`;
       
       html += `<div class="menu-content">`;
+      html += `<div class="menu-scroll-track">`;
       if (sec.subgroups) {
         sec.subgroups.forEach(sg => {
           html += `<div class="subgroup">`;
@@ -209,6 +210,7 @@ export function buildMenuDOM(layout) {
       } else if (sec.items) {
         html += `<div class="items-grid">${sec.items.map(renderItem).join('')}</div>`;
       }
+      html += `</div>`;
       html += `</div>`;
       el.innerHTML = html;
     }
@@ -268,12 +270,11 @@ export function measureMenuHeights(layout, vh) {
       sec.domElement.style.display = 'block';
       sec.domElement.style.transform = 'translateY(0)';
       
-      const h = sec.domElement.offsetHeight;
+      const track = sec.domElement.querySelector('.menu-scroll-track');
+      const h = track ? track.offsetHeight : sec.domElement.offsetHeight;
       
-      // The menu starts at 15vh. Available space to scroll within the viewport is 85vh.
-      // So if a menu is 200vh tall, you only need to scroll 115vh to reach the bottom.
-      // We'll pad the bottom slightly so the last item clears well.
-      const availableSpace = vh * 0.70; 
+      // Available viewable space below header is ~60vh
+      const availableSpace = vh * 0.60; 
       sec.measuredHeightPx = Math.max(0, h - availableSpace);
       
       sec.domElement.style.display = 'none';
@@ -281,84 +282,76 @@ export function measureMenuHeights(layout, vh) {
   });
 }
 
+let _lastActiveKey = null;
+
 /**
  * Syncs the DOM elements to the current scroll state.
  */
 export function updateMenuState(state, layout, vh) {
   const activeSec = state.section;
-  
-  layout.forEach(sec => {
-    const el = sec.domElement;
-    if (!el) return;
-    
-    const isActive = sec.key === activeSec.key;
-    
-    // We do NOT want to show the next section's menu during the cross-dissolve (J segment).
-    // The spec explicitly says: "no menu visible during the crossfade."
-    if (!isActive) {
-      el.style.display = 'none';
-      const mc = el.querySelector(':scope > .menu-content');
-      if (mc) {
-        mc.style.webkitMaskImage = '';
-        mc.style.maskImage = '';
-        mc.style.clipPath = '';
+
+  // Only hide inactive sections when active section actually changes
+  if (_lastActiveKey !== activeSec.key) {
+    layout.forEach(sec => {
+      if (sec.key !== activeSec.key && sec.domElement) {
+        sec.domElement.style.display = 'none';
       }
-      return;
-    }
-    
-    el.style.display = 'block';
-    
-    if (sec.type === 'group-intro') {
-      const titleOpacity = state.introTitleOpacity !== undefined ? state.introTitleOpacity : (state.segment === 'A' ? state.entranceProgress : 0);
-      const prog = state.introTitleProgress !== undefined ? state.introTitleProgress : 0;
-      // Continuous upward drift: starts at +2vh, glides through center and continues to -18vh
-      // Never settles into a stationary center hold
-      const driftY = (2 - prog * 20) * (vh / 100);
+    });
+    _lastActiveKey = activeSec.key;
+  }
 
-      el.style.display = titleOpacity > 0 ? 'block' : 'none';
-      el.style.opacity = titleOpacity;
-      el.style.setProperty('--cat-prog', '1');
-      el.style.transform = `translate(-50%, calc(-50% + ${driftY}px))`;
-      el.style.pointerEvents = 'none';
-      el.setAttribute('inert', '');
-      return;
-    }
+  const el = activeSec.domElement;
+  if (!el) return;
 
+  el.style.display = 'block';
+
+  if (activeSec.type === 'group-intro') {
+    const titleOpacity = state.introTitleOpacity !== undefined ? state.introTitleOpacity : (state.segment === 'A' ? state.entranceProgress : 0);
+    const prog = state.introTitleProgress !== undefined ? state.introTitleProgress : 0;
+    // Continuous upward drift: starts at +2vh, glides through center and continues to -18vh
+    const driftY = (2 - prog * 20) * (vh / 100);
+
+    el.style.display = titleOpacity > 0 ? 'block' : 'none';
+    el.style.opacity = titleOpacity;
+    el.style.setProperty('--cat-prog', '1');
+    el.style.transform = `translate(-50%, calc(-50% + ${driftY}px))`;
+    el.style.pointerEvents = 'none';
+    el.setAttribute('inert', '');
+  } else {
     let opacity = 0;
-    let y = 0;
-    
+    let trackY = 0;
+    let sectionY = 0;
+
     if (state.segment === 'A') {
       el.style.setProperty('--cat-prog', state.categoryProgress);
       el.style.setProperty('--menu-prog', state.menuProgress);
       opacity = state.entranceProgress;
-      y = 0; 
+      trackY = 0; 
+      sectionY = 0;
     } 
     else if (state.segment === 'H') {
       el.style.setProperty('--cat-prog', 1);
       el.style.setProperty('--menu-prog', 1);
       opacity = 1;
-      y = -state.holdMenuScroll;
+      trackY = -state.holdMenuScroll;
+      sectionY = 0;
     }
     else if (state.segment === 'X') {
       el.style.setProperty('--cat-prog', state.categoryProgress); 
       el.style.setProperty('--menu-prog', state.menuProgress);
       opacity = 1 - state.exitProgress;
-      
-      const baseScroll = -sec.H_length;
-      // Lift up during exit
-      y = baseScroll - (state.exitProgress * vh * 0.2); 
+      trackY = -activeSec.H_length;
+      // Lift section gracefully during exit
+      sectionY = -state.exitProgress * vh * 0.25; 
     }
-    else if (state.segment === 'C') {
+    else if (state.segment === 'C' || state.segment === 'J') {
       opacity = 0;
     }
-    else if (state.segment === 'J') {
-      opacity = 0;
-    }
-    
+
     el.style.opacity = opacity;
-    
-    // Manage interaction state (spec: buttons ONLY active during Hold)
-    if (state.buttonsActive && isActive) {
+
+    // Manage interaction state (buttons ONLY active during Hold)
+    if (state.buttonsActive) {
       el.style.pointerEvents = 'auto';
       el.removeAttribute('inert');
     } else {
@@ -366,96 +359,15 @@ export function updateMenuState(state, layout, vh) {
       el.setAttribute('inert', '');
     }
 
-    // CRITICAL: Must preserve the -50% horizontal translation from CSS!
-    el.style.transform = `translateX(-50%) translateY(${y}px)`;
+    // Outer section stays pinned at fixed viewport position during Hold, lifts on Exit
+    el.style.transform = `translateX(-50%) translateY(${sectionY}px)`;
 
-      // ── Sticky category heading ─────────────────────────────────────────
-      // The .sec-header must stay pinned at a fixed viewport position (just
-      // below the nav) for the ENTIRE H phase and for the start of X.
-      //
-      // Math:
-      //   heading_absolute_y = sectionTopPx + y + compensation
-      //   We want this = targetY = navBottomPx + cushion
-      //   => compensation = targetY - sectionTopPx - y
-      //   During H: y = -holdMenuScroll
-      //   => compensation = (targetY - sectionTopPx) + holdMenuScroll
-      //                   = holdMenuScroll - naturalOffset
-      //   (clamp to >= 0 so we never push it below its natural start)
-      //
-      // During X: keep it pinned at the same height it was at H-end,
-      // then let it smoothly release and exit with the section as
-      // exitProgress goes 0 → 1.
-      const secHeader = el.querySelector(':scope > .sec-header');
-      const menuContent = el.querySelector(':scope > .menu-content');
-
-      if (secHeader) {
-        const sectionTopPx  = 0.15 * vh;   // matches CSS: top: 15vh
-        const navBottomPx   = 80;           // matches CSS: height: 80px on #top-nav
-        const cushion       = 12;           // breathing gap below nav
-        const targetY       = navBottomPx + cushion;               // 92px
-        // naturalOffset: how many px of holdMenuScroll pass before pinning begins
-        // (the heading naturally descends from 15vh; once it reaches targetY it pins)
-        const naturalOffset = Math.max(0, sectionTopPx - targetY); // max(0, 15vh - 92)
-
-        if (state.segment === 'H') {
-          // Uncapped compensation: grows exactly as holdMenuScroll does,
-          // keeping heading_absolute_y = targetY throughout the whole hold.
-          const compensation = Math.max(0, state.holdMenuScroll - naturalOffset);
-          secHeader.style.transform = `translateY(${compensation}px)`;
-
-        } else if (state.segment === 'X') {
-          // At the end of H (start of X), holdMenuScroll = H_length.
-          // Compensation at that moment:
-          const compensationAtHEnd = Math.max(0, sec.H_length - naturalOffset);
-          // Smoothly release: at exitProgress=0 heading is still pinned (last dish
-          // just started moving); at exitProgress=1 heading is at section top
-          // and exits with it fully. This gives a natural joined exit.
-          const compensation = compensationAtHEnd * (1 - state.exitProgress);
-          secHeader.style.transform = `translateY(${compensation}px)`;
-
-        } else {
-          // A, C, J: CSS --cat-prog animation drives the heading normally.
-          secHeader.style.transform = '';
-        }
-      }
-
-      // ── Clipping boundary for scrolling menu items ──────────────────────
-      // Ensures all scrolling dishes, text, prices, and controls disappear
-      // behind the pinned category heading rather than passing over it.
-      if (secHeader && menuContent) {
-        if (state.segment === 'H' || state.segment === 'X') {
-          const headerRect = secHeader.getBoundingClientRect();
-          const contentRect = menuContent.getBoundingClientRect();
-
-          // Clipping boundary begins immediately below the pinned heading.
-          // 4px below heading bottom is 100% transparent and hard-clipped.
-          // 20px below heading bottom is 100% visible (16px smooth feather).
-          const fadeDistance = 16;
-          const yTransparent = headerRect.bottom + 4;
-          const yOpaque = yTransparent + fadeDistance;
-
-          const localTransparent = yTransparent - contentRect.top;
-          const localOpaque = yOpaque - contentRect.top;
-
-          if (localOpaque <= 0) {
-            menuContent.style.webkitMaskImage = '';
-            menuContent.style.maskImage = '';
-            menuContent.style.clipPath = '';
-          } else {
-            const cutY = Math.max(0, localTransparent);
-            const fadeY = Math.max(0, localOpaque);
-
-            menuContent.style.webkitMaskImage = `linear-gradient(to bottom, transparent 0px, transparent ${cutY}px, black ${fadeY}px, black 100%)`;
-            menuContent.style.maskImage = `linear-gradient(to bottom, transparent 0px, transparent ${cutY}px, black ${fadeY}px, black 100%)`;
-            menuContent.style.clipPath = `inset(${cutY}px -40px 0px -40px)`;
-          }
-        } else {
-          menuContent.style.webkitMaskImage = '';
-          menuContent.style.maskImage = '';
-          menuContent.style.clipPath = '';
-        }
-      }
-  });
+    // Menu dishes scroll upward inside the stationary clipping container
+    const track = el.querySelector('.menu-scroll-track');
+    if (track) {
+      track.style.transform = `translateY(${trackY}px)`;
+    }
+  }
 
   // Cinematic Scrim: 
   // Darken the video seamlessly in sync with menu entrance/exit so text is perfectly legible.

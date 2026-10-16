@@ -97,31 +97,35 @@ export function getScrollState(scrollY, layout) {
 
       // Title choreography for 78-frame sequence:
       // "FOOD" text emerges, glides upward, and fades out cleanly BEFORE
-      // the background video's "THE NINES" logo appears (at frame 25/26, t ≈ 0.32).
-      // 0.00 -> 0.10: Emerges smoothly from center
-      // 0.10 -> 0.20: Glides upward at 100% opacity
-      // 0.20 -> 0.28: Fades out smoothly while continuing upward
-      // t >= 0.28: Completely faded out (zero overlap with THE NINES logo)
-      const FADE_OUT_END = 0.28;
+      // the background video's "THE NINES" logo appears (at frame 14, t ≈ 0.18).
+      // 0.00 -> 0.05: Emerges smoothly from center
+      // 0.05 -> 0.10: Glides upward at 100% opacity
+      // 0.10 -> 0.16: Fades out smoothly while continuing upward
+      // t >= 0.16: Completely faded out (zero overlap with THE NINES logo)
+      const FADE_OUT_END = 0.16;
       let titleOpacity = 0;
-      if (t < 0.10) {
-        titleOpacity = t / 0.10;
-      } else if (t < 0.20) {
+      if (t < 0.05) {
+        titleOpacity = t / 0.05;
+      } else if (t < 0.10) {
         titleOpacity = 1;
       } else if (t < FADE_OUT_END) {
-        titleOpacity = 1 - (t - 0.20) / (FADE_OUT_END - 0.20);
+        titleOpacity = 1 - (t - 0.10) / (FADE_OUT_END - 0.10);
       } else {
         titleOpacity = 0;
       }
 
       const titleProg = Math.min(1, t / FADE_OUT_END);
 
+      const frameFloat = Math.max(0, Math.min(frameCount - 1, p * (frameCount - 1)));
+      const frameIndex = Math.floor(frameFloat);
+
       return {
         sectionIndex: idx,
         section: sec,
         segment: 'A',
         videoProgress: p,
-        frameIndex: Math.max(0, Math.min(frameCount - 1, Math.round(p * (frameCount - 1)))),
+        frameIndex,
+        frameFloat,
         segmentProgress: t,
         entranceProgress: titleOpacity,
         categoryProgress: titleOpacity,
@@ -147,6 +151,7 @@ export function getScrollState(scrollY, layout) {
         segment: 'J',
         videoProgress: 1.0,
         frameIndex: frameCount - 1,
+        frameFloat: frameCount - 1,
         segmentProgress: t,
         entranceProgress: 0,
         categoryProgress: 0,
@@ -190,13 +195,16 @@ export function getScrollState(scrollY, layout) {
       (p - menuStart) / (holdAt - menuStart);
 
     const entranceProgress = Math.max(categoryProgress, menuProgress);
+    const frameFloat = Math.max(0, Math.min(frameCount - 1, p * (frameCount - 1)));
+    const frameIndex = Math.floor(frameFloat);
 
     return {
       sectionIndex: idx,
       section: sec,
       segment: 'A',
       videoProgress: p,
-      frameIndex: Math.max(0, Math.min(frameCount - 1, Math.round(p * (frameCount - 1)))),
+      frameIndex,
+      frameFloat,
       segmentProgress: t,
       entranceProgress,
       categoryProgress,
@@ -220,6 +228,7 @@ export function getScrollState(scrollY, layout) {
       segment: 'H',
       videoProgress: holdP,
       frameIndex: sec.holdFrame,
+      frameFloat: sec.holdFrame,
       segmentProgress: Math.max(0, Math.min(1, t)),
       entranceProgress: 1,
       categoryProgress: 1,
@@ -250,13 +259,16 @@ export function getScrollState(scrollY, layout) {
 
     // Exit progress: menu lifts upward and fades
     const exitProgress = t;
+    const frameFloat = Math.max(0, Math.min(frameCount - 1, p * (frameCount - 1)));
+    const frameIndex = Math.floor(frameFloat);
 
     return {
       sectionIndex: idx,
       section: sec,
       segment: 'X',
       videoProgress: p,
-      frameIndex: Math.max(0, Math.min(frameCount - 1, Math.round(p * (frameCount - 1)))),
+      frameIndex,
+      frameFloat,
       segmentProgress: t,
       entranceProgress: 1,
       categoryProgress: 1, // Stay at 1 so CSS transform doesn't push it down
@@ -275,13 +287,16 @@ export function getScrollState(scrollY, layout) {
     const t = Math.max(0, Math.min(1, rawT));
 
     const p = sec.p_at_exit_end + t * (1.0 - sec.p_at_exit_end);
+    const frameFloat = Math.min(frameCount - 1, p * (frameCount - 1));
+    const frameIndex = Math.floor(frameFloat);
 
     return {
       sectionIndex: idx,
       section: sec,
       segment: 'C',
       videoProgress: Math.min(1, p),
-      frameIndex: Math.min(frameCount - 1, Math.round(p * (frameCount - 1))),
+      frameIndex,
+      frameFloat,
       segmentProgress: t,
       entranceProgress: 0,
       categoryProgress: 0,
@@ -306,6 +321,7 @@ export function getScrollState(scrollY, layout) {
       segment: 'J',
       videoProgress: 1.0,
       frameIndex: frameCount - 1,
+      frameFloat: frameCount - 1,
       segmentProgress: t,
       entranceProgress: 0,
       categoryProgress: 0,
@@ -328,6 +344,7 @@ export function getScrollState(scrollY, layout) {
     segment: 'C',
     videoProgress: 1.0,
     frameIndex: frameCount - 1,
+    frameFloat: frameCount - 1,
     segmentProgress: 1,
     entranceProgress: 0,
     categoryProgress: 0,

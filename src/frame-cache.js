@@ -19,31 +19,15 @@ const DECODE_WINDOW = 10;  // ±10 frames from current position
 const MAX_CONCURRENT_LOADS = 6;
 
 /**
- * Generate coarse-to-fine loading order for `count` frames.
- * Loads boundary frames first, then every 8th frame, 4th, 2nd, and all.
+ * Progressive sequential loading order:
+ * Loads frames in contiguous forward order (0, 1, 2, 3...)
+ * so all adjacent frames are available for seamless sub-frame blending
+ * without gaps, jumps, or stepping artifacts.
  */
-function coarseToFineOrder(count, key) {
+function sequentialOrder(count) {
   const order = [];
-  const seen = new Set();
-
-  for (const boundaryIdx of [0, count - 1]) {
-    if (boundaryIdx < count && !seen.has(boundaryIdx)) {
-      seen.add(boundaryIdx);
-      order.push(boundaryIdx);
-    }
-  }
-
-  for (let step of [8, 4, 2, 1]) {
-    for (let i = 0; i < count; i += step) {
-      if (!seen.has(i)) {
-        seen.add(i);
-        order.push(i);
-      }
-    }
-  }
-  // Ensure last frame is included
-  if (!seen.has(count - 1)) {
-    order.push(count - 1);
+  for (let i = 0; i < count; i++) {
+    order.push(i);
   }
   return order;
 }
@@ -65,7 +49,7 @@ export class FrameCache {
   }
 
   /**
-   * Start loading frames for a section in coarse-to-fine order.
+   * Start loading frames for a section in sequential order.
    *
    * @param {string} key - section key
    * @param {string} framePath - e.g. '/frames/first-course/'
@@ -82,7 +66,7 @@ export class FrameCache {
     const ac = new AbortController();
     const images = new Map();
     const inFlight = new Set();
-    const order = coarseToFineOrder(frameCount, key);
+    const order = sequentialOrder(frameCount);
 
     const state = {
       key,
@@ -183,9 +167,15 @@ export class FrameCache {
     const count = state.frameCount;
     const center = Math.max(0, Math.min(count - 1, Math.round(currentFrameIndex || 0)));
 
+    // Debounce: avoid churning the worker queue if the user moved less than 2 frames
+    if (state._lastPrioritizedCenter !== undefined && Math.abs(state._lastPrioritizedCenter - center) < 2) {
+      return;
+    }
+    state._lastPrioritizedCenter = center;
+
     const priorityFrames = [];
-    const spanAhead = 14;
-    const spanBehind = 4;
+    const spanAhead = 20; // 20 frames ahead for seamless continuous motion
+    const spanBehind = 6;  // 6 frames behind for smooth scrolling reversal
 
     if (direction >= 0) {
       // Forward scroll: prioritize upcoming frames ahead

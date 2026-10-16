@@ -129,6 +129,7 @@
       /* Category heading stays in foreground above scrolling items */
       position: relative;
       z-index: 10;
+      pointer-events: none;
     }
     .menu-content {
       opacity: var(--menu-prog, 1);
@@ -138,8 +139,14 @@
       position: relative;
       z-index: 1;
       will-change: transform, opacity;
+      /* Stationary mask: items fading out before reaching the category heading */
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0px, transparent 8px, black 36px, black 100%);
+      mask-image: linear-gradient(to bottom, transparent 0px, transparent 8px, black 36px, black 100%);
       -webkit-mask-repeat: no-repeat;
       mask-repeat: no-repeat;
+    }
+    .menu-scroll-track {
+      will-change: transform;
     }
 
 

@@ -79,19 +79,19 @@ async function init() {
   // Add vh so the maximum scrollY (which is height - vh) equals totalScroll
   scrollContainer.style.height = `${totalScroll + viewportHeight}px`;
 
-  // Wait for initial frames to load before revealing the screen
+  // Wait for initial sequential frames to load before revealing the screen
   await new Promise(resolve => {
+    const startTime = performance.now();
     const checkReady = () => {
       const firstKey = layout[0].key;
       const progress = loader.getProgress(firstKey);
 
-      // Ready when at least 20% loaded (coarse frames available for smooth scrub)
-      if (progress >= 0.2) {
-        // Short delay to ensure GPU texture upload
+      // Ready when at least 35% loaded (first 28+ consecutive frames ready) or 800ms elapsed
+      if (progress >= 0.35 || (performance.now() - startTime > 800 && progress > 0.1)) {
         setTimeout(() => {
           document.body.classList.add('ready');
           resolve();
-        }, 150);
+        }, 100);
       } else {
         requestAnimationFrame(checkReady);
       }
@@ -119,17 +119,17 @@ function tick() {
   rafId = null;
   const realScrollY = window.scrollY;
 
-  // Phase 6: ease the display position toward the real scroll for smooth wheel feel
+  // Fluid smooth-glide tracking
   const scrollY = easer ? easer.tick(realScrollY) : realScrollY;
 
-  // Keep firing rAF while still easing (display hasn't caught up to real)
-  const stillEasing = Math.abs(scrollY - realScrollY) > 0.5;
+  // Keep firing rAF while still easing
+  const stillEasing = Math.abs(scrollY - realScrollY) > 0.25;
   if (stillEasing) {
     rafId = requestAnimationFrame(tick);
   }
 
-  // Skip full render if neither display nor real position changed
-  if (scrollY === lastScrollY && !stillEasing) return;
+  // Skip full render if position did not change significantly
+  if (Math.abs(scrollY - lastScrollY) < 0.05 && !stillEasing) return;
   lastScrollY = scrollY;
 
   // Get state from eased scroll position

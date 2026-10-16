@@ -20,6 +20,7 @@ export class Renderer {
     this.frameCache = frameCache;
     this._lastDrawnKey = null;
     this._lastDrawnFrame = -1;
+    this._lastDrawnFloat = -1;
     this._lastValidImage = null; // Robust fallback to eliminate black screens
 
     this.resize();
@@ -33,14 +34,19 @@ export class Renderer {
     const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
     const rect = this.canvas.getBoundingClientRect();
 
-    console.log(`[Renderer] Resize: rect=${rect.width}x${rect.height}, dpr=${dpr}`);
-
     // Fallback if styling failed (e.g. dvh not supported)
     const w = rect.width || window.innerWidth;
     const h = rect.height || window.innerHeight;
 
-    this.canvas.width = w * dpr;
-    this.canvas.height = h * dpr;
+    if (this._lastWidth === w && this._lastHeight === h && this._lastDpr === dpr) {
+      return;
+    }
+    this._lastWidth = w;
+    this._lastHeight = h;
+    this._lastDpr = dpr;
+
+    this.canvas.width = Math.round(w * dpr);
+    this.canvas.height = Math.round(h * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     this._displayWidth = w;
@@ -49,6 +55,7 @@ export class Renderer {
     // Force a redraw on resize and immediately restore last valid frame so canvas never flashes black
     this._lastDrawnKey = null;
     this._lastDrawnFrame = -1;
+    this._lastDrawnFloat = -1;
     if (this._lastValidImage) {
       this.ctx.globalAlpha = 1;
       this._drawImageCover(this._lastValidImage);
@@ -61,8 +68,11 @@ export class Renderer {
    * @param {object} state - from getScrollState()
    */
   render(state) {
-    const { section, frameIndex, crossDissolve } = state;
+    const { section, crossDissolve } = state;
     const key = section.key;
+    const frameFloat = state.frameFloat !== undefined ? state.frameFloat : state.frameIndex;
+    const frameIndex = Math.floor(frameFloat);
+
     // Prioritize upcoming frames in direction of motion for fluid playback
     const direction = this._lastFrameIndex !== undefined ? (frameIndex >= this._lastFrameIndex ? 1 : -1) : 1;
     this._lastFrameIndex = frameIndex;
@@ -73,48 +83,63 @@ export class Renderer {
       this.frameCache.prioritizeWindow(crossDissolve.nextSection.key, 0, 1);
       // ── Cross-dissolve between two sections ──
       this._renderCrossDissolve(
-        key, frameIndex,
+        key, frameFloat,
         crossDissolve.nextSection.key, 0,
         crossDissolve.progress
       );
     } else {
-      // ── Single frame (pass section for blur-up placeholder) ──
-      this._renderFrame(key, frameIndex, section);
+      // ── Single frame with sub-frame continuous blending ──
+      this._renderFrame(key, frameFloat, section);
     }
-
-    // Maintain decoded-frame window
-    this.frameCache.maintainWindow(key, frameIndex);
   }
 
   /**
-   * Draw a single frame from a section.
-   * Falls back to last valid image / blur placeholder if no frame is loaded yet.
+   * Draw a frame from a section with sub-frame continuous blending.
+   * Smoothly crossfades between adjacent frames according to the fractional
+   * scroll position, creating a liquid 60/120fps motion picture without stepped popping.
    */
-  _renderFrame(sectionKey, frameIndex, section) {
-    // Skip redraw if same frame
-    if (this._lastDrawnKey === sectionKey && this._lastDrawnFrame === frameIndex) {
+  _renderFrame(sectionKey, frameFloat, section) {
+    const count = section.frameCount;
+    const clampedFloat = Math.max(0, Math.min(count - 1, frameFloat));
+    const floorIndex = Math.floor(clampedFloat);
+    const ceilIndex = Math.min(count - 1, floorIndex + 1);
+    const blendAlpha = clampedFloat - floorIndex;
+
+    // Skip redraw if identical sub-frame already drawn
+    if (this._lastDrawnKey === sectionKey && Math.abs(this._lastDrawnFloat - clampedFloat) < 0.002) {
       return;
     }
 
-    const img = this.frameCache.nearestFrame(sectionKey, frameIndex);
-    if (!img) {
-      // Robust fallback: if we already have a valid rendered frame, keep showing it!
-      // NEVER blank the canvas to solid black while waiting for a frame.
+    const imgFloor = this.frameCache.nearestFrame(sectionKey, floorIndex);
+    if (!imgFloor) {
       if (this._lastValidImage) {
         this.ctx.globalAlpha = 1;
         this._drawImageCover(this._lastValidImage);
         return;
       }
-      // No frame yet at all (initial startup) — draw blur placeholder if available
       this._drawPlaceholder(section);
       return;
     }
 
+    // Draw base (floor) frame at full opacity
     this.ctx.globalAlpha = 1;
-    this._drawImageCover(img);
-    this._lastValidImage = img;
+    this._drawImageCover(imgFloor);
+    this._lastValidImage = imgFloor;
+
+    // Sub-frame blend: if position is fractional and next frame is available in cache,
+    // blend it seamlessly on top! Eliminates the stepped "one one frame is changing" artifact.
+    if (blendAlpha > 0.01 && ceilIndex !== floorIndex) {
+      const imgCeil = this.frameCache.getFrame(sectionKey, ceilIndex);
+      if (imgCeil) {
+        this.ctx.globalAlpha = blendAlpha;
+        this._drawImageCover(imgCeil);
+        this.ctx.globalAlpha = 1;
+      }
+    }
+
     this._lastDrawnKey = sectionKey;
-    this._lastDrawnFrame = frameIndex;
+    this._lastDrawnFloat = clampedFloat;
+    this._lastDrawnFrame = floorIndex;
   }
 
   /**
@@ -140,20 +165,17 @@ export class Renderer {
     if (!ph) {
       ph = { state: 'loading', img: null };
       this._placeholders.set(key, ph);
-      // Load the placeholder — it's the first frame (frame0001.webp) since that's guaranteed small
       const img = new Image();
       img.onload = () => { ph.img = img; ph.state = 'loaded'; this._lastDrawnFrame = -1; };
       img.src = `${section.framePath}frame0001.webp`;
     }
 
     if (ph.state === 'loaded' && ph.img) {
-      // Apply CSS blur via canvas filter (supported in all modern browsers)
       this.ctx.filter = 'blur(12px)';
       this._drawImageCover(ph.img);
       this.ctx.filter = 'none';
       this._lastValidImage = ph.img;
     } else {
-      // Placeholder not yet ready on initial start — show dark background
       this.ctx.fillStyle = '#0a0a0a';
       this.ctx.fillRect(0, 0, this._displayWidth, this._displayHeight);
     }
@@ -161,16 +183,12 @@ export class Renderer {
 
   /**
    * Cross-dissolve between two frames from different sections.
-   *
-   * @param {string} keyA - current section key
-   * @param {number} frameA - current frame index
-   * @param {string} keyB - next section key
-   * @param {number} frameB - next frame index
-   * @param {number} progress - 0 = all A, 1 = all B
    */
-  _renderCrossDissolve(keyA, frameA, keyB, frameB, progress) {
-    const imgA = this.frameCache.nearestFrame(keyA, frameA) || this._lastValidImage;
-    const imgB = this.frameCache.nearestFrame(keyB, frameB);
+  _renderCrossDissolve(keyA, frameFloatA, keyB, frameFloatB, progress) {
+    const floorA = Math.floor(Math.max(0, frameFloatA));
+    const floorB = Math.floor(Math.max(0, frameFloatB));
+    const imgA = this.frameCache.nearestFrame(keyA, floorA) || this._lastValidImage;
+    const imgB = this.frameCache.nearestFrame(keyB, floorB);
 
     // Draw A at full opacity
     if (imgA) {
@@ -196,7 +214,8 @@ export class Renderer {
       }
     }
 
-    this._lastDrawnKey = null;  // force redraw next time
+    this._lastDrawnKey = null;
+    this._lastDrawnFloat = -1;
     this._lastDrawnFrame = -1;
   }
 
