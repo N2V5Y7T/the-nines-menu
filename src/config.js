@@ -182,10 +182,12 @@ export function computeScrollLayout(sections, vh) {
 
     // Segment H: video frozen, menu scrolls
     // H_length matches the actual distance needed to scroll the dishes.
-    // If all items fit on screen (measuredHeightPx === 0), H_length is 0 so there is no dead frozen scroll!
-    const H_length = sec.hasMenu 
+    // For mammoth menus (like Bar with 145 items), cap H_length to max 2800px (~5-6 comfortable swipes)
+    // so the user can browse through the spirits smoothly without being trapped in Bar for 35 swipes!
+    const rawH = sec.hasMenu 
       ? (sec.measuredHeightPx !== undefined ? sec.measuredHeightPx : sec.estimatedMenuHeightPx) 
       : 0;
+    const H_length = Math.min(rawH, 2800);
 
     // Segment X: exit (exitLengthVh)
     const X_length = exitPx;

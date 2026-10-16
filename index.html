@@ -104,11 +104,11 @@
       transform: translateX(-50%);
       width: 100%;
       max-width: 414px; /* Mobile safe width */
-      padding: 0 24px 10vh;
+      padding: 0 24px;
       pointer-events: auto; /* Let clicks pass to items if needed */
-      text-shadow: 0 1px 4px rgba(0,0,0,0.9), 0 3px 20px rgba(0,0,0,0.5);
+      text-shadow: 0 1px 3px rgba(0,0,0,0.95), 0 2px 8px rgba(0,0,0,0.7);
       will-change: transform, opacity;
-      transition: text-shadow 0.4s ease, color 0.4s ease;
+      transition: color 0.4s ease;
     }
 
     .menu-section.group-intro {
@@ -137,16 +137,21 @@
       transition: color 0.4s ease;
       position: relative;
       z-index: 1;
+      height: calc(100vh - 165px);
+      height: calc(100dvh - 165px);
+      overflow: hidden;
       will-change: transform, opacity;
-      /* Stationary mask: items fading out gracefully before reaching the category heading */
-      -webkit-mask-image: linear-gradient(to bottom, transparent 0px, transparent 4px, black 28px, black 100%);
-      mask-image: linear-gradient(to bottom, transparent 0px, transparent 4px, black 28px, black 100%);
+      /* Stationary mask: items fading out gracefully near the top and bottom edges */
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0px, transparent 4px, black 28px, black calc(100% - 28px), transparent 100%);
+      mask-image: linear-gradient(to bottom, transparent 0px, transparent 4px, black 28px, black calc(100% - 28px), transparent 100%);
       -webkit-mask-repeat: no-repeat;
       mask-repeat: no-repeat;
     }
     .menu-scroll-track {
       will-change: transform;
+      transform: translate3d(0, 0, 0);
       padding-top: 32px; /* Breathing room below category header: first item sits in 100% opaque zone */
+      padding-bottom: 90px; /* Safe buffer so last item is fully readable */
     }
 
 
@@ -187,6 +192,8 @@
 
     .subgroup {
       margin-top: 36px;
+      content-visibility: auto;
+      contain-intrinsic-size: 150px;
     }
     .subgroup:first-child {
       margin-top: 0;
@@ -218,6 +225,8 @@
       display: flex;
       flex-direction: column;
       gap: 5px;
+      content-visibility: auto;
+      contain-intrinsic-size: 75px;
     }
 
     /* Single item: name + desc stacked, price + button on the right */
@@ -241,7 +250,6 @@
       letter-spacing: 0.01em;
       margin: 0;
       color: #fff;
-      transition: color 0.4s ease;
     }
 
     /* Single flat price */
@@ -307,7 +315,6 @@
       line-height: 1.45;
       letter-spacing: 0.01em;
       margin-top: 3px;
-      transition: color 0.4s ease;
     }
 
     .diet-dot {

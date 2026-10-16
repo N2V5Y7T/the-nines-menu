@@ -268,16 +268,14 @@ export function measureMenuHeights(layout, vh) {
     } else {
       // Temporarily display to measure
       sec.domElement.style.display = 'block';
-      sec.domElement.style.transform = 'translateY(0)';
+      sec.domElement.style.transform = 'translateX(-50%)';
       
       const track = sec.domElement.querySelector('.menu-scroll-track');
-      const h = track ? track.offsetHeight : sec.domElement.offsetHeight;
       const content = sec.domElement.querySelector('.menu-content');
-      const contentTop = content ? content.getBoundingClientRect().top : 140;
+      const trackH = track ? track.offsetHeight : sec.domElement.offsetHeight;
+      const contentH = content && content.offsetHeight > 0 ? content.offsetHeight : Math.max(200, vh - 165);
 
-      // Available viewable space below header down to bottom buffer (80px for cart/order bar)
-      const availableSpace = Math.max(200, vh - contentTop - 80); 
-      sec.measuredHeightPx = Math.max(0, h - availableSpace);
+      sec.measuredHeightPx = Math.max(0, trackH - contentH);
       
       sec.domElement.style.display = 'none';
     }
@@ -337,8 +335,8 @@ export function updateMenuState(state, layout, vh) {
       el.style.setProperty('--cat-prog', 1);
       el.style.setProperty('--menu-prog', 1);
       opacity = 1;
-      // Clamp scroll so track never overscrolls past the final item
-      trackY = -Math.min(state.holdMenuScroll, maxScroll);
+      const progress = activeSec.H_length > 0 ? Math.min(1, state.holdMenuScroll / activeSec.H_length) : 0;
+      trackY = -progress * maxScroll;
       sectionY = 0;
     }
     else if (state.segment === 'X') {
@@ -365,12 +363,12 @@ export function updateMenuState(state, layout, vh) {
     }
 
     // Outer section stays pinned at fixed viewport position during Hold, lifts on Exit
-    el.style.transform = `translateX(-50%) translateY(${sectionY}px)`;
+    el.style.transform = sectionY === 0 ? 'translateX(-50%)' : `translate3d(-50%, ${sectionY}px, 0)`;
 
-    // Menu dishes scroll upward inside the stationary clipping container
+    // Menu dishes scroll upward inside the stationary clipping container with GPU acceleration
     const track = el.querySelector('.menu-scroll-track');
     if (track) {
-      track.style.transform = `translateY(${trackY}px)`;
+      track.style.transform = `translate3d(0, ${trackY}px, 0)`;
     }
   }
 
